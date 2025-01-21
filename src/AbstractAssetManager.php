@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Core\Assets;
 
-use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
 use Core\Assets\Factory\Compiler\AssetReference;
 use Core\Assets\Interface\{AssetHtmlInterface, AssetManagerInterface, AssetModelInterface};
+use Core\Symfony\DependencyInjection\Autodiscover;
+use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
 use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\Attribute\Lazy;
 use Symfony\Contracts\Cache\CacheInterface;
 
 /**
@@ -23,8 +25,12 @@ use Symfony\Contracts\Cache\CacheInterface;
  *
  * @noinspection PhpClassCanBeReadonlyInspection lazy-load using ghost
  */
-#[Lazy] // ghost
-class AssetManager implements AssetManagerInterface
+#[Autodiscover(
+    lazy     : true,
+    public   : false,
+    autowire : true,
+)]
+class AbstractAssetManager implements AssetManagerInterface
 {
     public function __construct(
         public readonly AssetFactory        $factory, // internal

@@ -8,6 +8,7 @@ use Core\Assets\Factory\Asset\Type;
 use Stringable;
 use InvalidArgumentException;
 use const PATHINFO_EXTENSION;
+use SplFileInfo;
 use Support\{FileInfo, Normalize, Str};
 
 /**
