@@ -36,13 +36,6 @@ final readonly class AssetLocator
         private ?LoggerInterface       $logger = null,
     ) {}
 
-    // private
-    public function getPublicDirectory() : FileInfo
-    {
-        return $this->pathfinder->getFileInfo( $this->publicDirectory )
-               ?? throw new RuntimeException();
-    }
-
     public function __destruct()
     {
         $this->manifest->commit();
@@ -108,13 +101,22 @@ final readonly class AssetLocator
         return null;
     }
 
+    /**
+     * @param string   $assetPath
+     * @param FileInfo $scanDirectory
+     * @param Type     $type
+     *
+     * @return array{string,string}
+     */
     private function resolveAssetGlob( string $assetPath, FileInfo $scanDirectory, Type $type ) : array
     {
         $trimmedPath = \trim( \substr( $assetPath, \strlen( $scanDirectory->getPathname() ) ), DIRECTORY_SEPARATOR );
 
-        $name = \strstr( $trimmedPath, DIRECTORY_SEPARATOR, true ) ?: \strstr( $trimmedPath, '.', true );
+        $name = \strstr( $trimmedPath, DIRECTORY_SEPARATOR, true )
+                ?: \strstr( $trimmedPath, '.', true )
+                        ?: $trimmedPath;
 
-        $reference = \preg_replace( '#[ _]+#', '-', \strtolower( "{$type->name}.{$name}" ) );
+        $reference = (string) \preg_replace( '#[ _]+#', '-', \strtolower( "{$type->name}.{$name}" ) );
 
         return [
             $reference,
@@ -200,5 +202,11 @@ final readonly class AssetLocator
             Type::DOCUMENT => 'documents',
             default        => '*',
         };
+    }
+
+    private function getPublicDirectory() : FileInfo
+    {
+        return $this->pathfinder->getFileInfo( $this->publicDirectory )
+               ?? throw new RuntimeException();
     }
 }

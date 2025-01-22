@@ -8,7 +8,6 @@ use Core\Assets\Factory\Asset\Type;
 use Core\Assets\Factory\AssetReference;
 use Core\Assets\Interface\AssetModelInterface;
 use Core\PathfinderInterface;
-use Support\{FileInfo, Normalize};
 use const Support\AUTO;
 
 abstract class AbstractAssetModel implements AssetModelInterface
@@ -23,18 +22,13 @@ abstract class AbstractAssetModel implements AssetModelInterface
     final private function __construct(
         private readonly AssetReference     $reference,
         public readonly PathfinderInterface $pathfinder,
-    ) {
-        // $this->publicPath = $pathfinder->getFileInfo( "dir.assets.public/{$this->relativePublicPath()}" );
-        // \assert( $this->publicPath instanceof FileInfo );
-        // $this->publicUrl = Normalize::url( $this->pathfinder->get( $this->publicPath, 'dir.public' ) );
-    }
+    ) {}
 
     abstract protected function construct() : void;
 
     public function version() : string
     {
-        $version = \hash( 'crc32', $this->assetID );
-        return "?v={$version}";
+        return '?v='.\hash( 'crc32', $this->assetID );
     }
 
     final public function build(
