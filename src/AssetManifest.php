@@ -6,7 +6,7 @@ namespace Core\Assets;
 
 use Cache\LocalStorage;
 use Core\Assets\Exception\UndefinedAssetReferenceException;
-use Core\Assets\Factory\Compiler\AssetReference;
+use Core\Assets\Factory\AssetReference;
 use Core\Assets\Interface\{AssetManagerInterface, AssetManifestInterface};
 use Support\PhpStormMeta;
 

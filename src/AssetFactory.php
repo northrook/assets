@@ -4,36 +4,38 @@ declare(strict_types=1);
 
 namespace Core\Assets;
 
-use Core\Assets\Factory\Compiler\AssetReference;
+use Core\Assets\Factory\{AssetLocator, AssetReference};
 use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
-use Core\Assets\Factory\Asset\{ImageAsset, ScriptAsset, StyleAsset, Type};
-use Core\Assets\Factory\AssetLocator;
 use Core\Assets\Interface\{AssetHtmlInterface, AssetManifestInterface, AssetModelInterface};
+use Core\Assets\Factory\Asset\{ImageAsset, ScriptAsset, StyleAsset, Type};
 use Core\PathfinderInterface;
-use Core\Symfony\DependencyInjection\Autodiscover;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 
-#[Autodiscover(
-    lazy     : true,
-    public   : false,
-    autowire : true,
+#[Autoconfigure(
+    lazy   : true,
+    public : false,
 )]
 class AssetFactory
 {
+
     private readonly AssetLocator $locator;
 
-    /** @var array<string, callable(AssetModelInterface):AssetModelInterface> */
-    protected array $assetModelCallback = [];
+    protected bool $lock = false;
 
-    /** @var array<string, callable(AssetModelInterface):AssetModelInterface> */
-    protected array $assetTypeCallback = [];
-
+    /**
+     * @param AssetManifest        $manifest
+     * @param PathfinderInterface  $pathfinder
+     * @param string               $publicDirectory
+     * @param string|string[]      $assetDirectories
+     * @param null|LoggerInterface $logger
+     */
     final public function __construct(
         public readonly AssetManifestInterface $manifest,
         protected readonly PathfinderInterface $pathfinder,
+        protected readonly string              $publicDirectory,
+        protected readonly string|array        $assetDirectories,
         protected readonly ?LoggerInterface    $logger = null,
-        protected bool                         $lock = false,
     ) {}
 
     final public function locator() : AssetLocator
@@ -41,28 +43,10 @@ class AssetFactory
         return $this->locator ??= new AssetLocator(
             $this->manifest,
             $this->pathfinder,
+            $this->publicDirectory,
+            (array) $this->assetDirectories,
             $this->logger,
         );
-    }
-
-    final public function addAssetModelCallback( string $asset, callable $callback ) : self
-    {
-        if ( $this->lock ) {
-            $message = "Unable to add assetModelCallback to '{$asset}', the AssetManager is locked.";
-            throw new RuntimeException( $message );
-        }
-        $this->assetModelCallback[$asset] = $callback;
-        return $this;
-    }
-
-    final public function addAssetTypeCallback( Type $type, callable $callback ) : self
-    {
-        if ( $this->lock ) {
-            $message = "Unable to add assetTypeCallback to '{$type->name}', the AssetManager is locked.";
-            throw new RuntimeException( $message );
-        }
-        $this->assetTypeCallback[$type->name] = $callback;
-        return $this;
     }
 
     /**
@@ -80,8 +64,6 @@ class AssetFactory
         array                 $attributes = [],
     ) : AssetHtmlInterface {
         $assetModel = $this->getAssetModel( $asset, $assetID );
-
-        $this->handleAssetCallback( $assetModel );
 
         return $assetModel->render( $attributes );
     }
@@ -116,9 +98,7 @@ class AssetFactory
             $this->pathfinder,
         );
 
-        $asset->build( $assetID );
-
-        return $asset;
+        return $asset->build( $assetID );
     }
 
     /**
@@ -146,7 +126,7 @@ class AssetFactory
                     'Unable to resolve asset model for {asset} with type {type}. Autodiscover triggered.',
                     ['asset' => $asset, 'type' => $validType->name],
                 );
-                $this->locator()->discover( $validType );
+                $this->locator()->locateAsset( $validType );
             }
             else {
                 $this->logger?->emergency(
@@ -159,29 +139,6 @@ class AssetFactory
                 throw $exception;
             }
             return $this->manifest->getReference( $asset );
-        }
-    }
-
-    /**
-     * Handle registered pre-render `callback` functions.
-     *
-     * @param AssetModelInterface $assetModel
-     *
-     * @return void
-     */
-    private function handleAssetCallback( AssetModelInterface &$assetModel ) : void
-    {
-        if ( \array_key_exists(
-            $assetModel->getType()->name,
-            $this->assetTypeCallback,
-        ) ) {
-            $assetModel = ( $this->assetTypeCallback[$assetModel->getType()->name] )( $assetModel );
-        }
-        if ( \array_key_exists(
-            $assetModel->getName(),
-            $this->assetModelCallback,
-        ) ) {
-            $assetModel = ( $this->assetModelCallback[$assetModel->getName()] )( $assetModel );
         }
     }
 }

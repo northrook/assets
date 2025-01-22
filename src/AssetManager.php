@@ -2,8 +2,8 @@
 
 namespace Core\Assets;
 
+use Core\Assets\Factory\AssetReference;
 use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
-use Core\Assets\Factory\Compiler\AssetReference;
 use Core\Assets\Interface\{AssetHtmlInterface, AssetManagerInterface, AssetModelInterface};
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Lazy;
@@ -27,7 +27,7 @@ use Symfony\Contracts\Cache\CacheInterface;
 class AssetManager implements AssetManagerInterface
 {
     public function __construct(
-        public readonly AssetFactory        $factory, // internal
+        public readonly AssetFactory        $factory, // [ghost]
         protected readonly ?CacheInterface  $cache = null,
         protected readonly ?LoggerInterface $logger = null,
     ) {}

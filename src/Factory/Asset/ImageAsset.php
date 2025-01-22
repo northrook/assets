@@ -10,6 +10,11 @@ use Core\Assets\Interface\AssetHtmlInterface;
 
 final class ImageAsset extends AbstractAssetModel
 {
+    protected function construct() : void
+    {
+        // TODO: Implement construct() method.
+    }
+
     public function render( ?array $attributes = null ) : AssetHtmlInterface
     {
         // dump( $this );

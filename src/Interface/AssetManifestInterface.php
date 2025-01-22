@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Core\Assets\Interface;
 
 use Core\Assets\Exception\UndefinedAssetReferenceException;
-use Core\Assets\Factory\Compiler\AssetReference;
+use Core\Assets\Factory\AssetReference;
 
 interface AssetManifestInterface
 {

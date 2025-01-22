@@ -9,10 +9,21 @@ use Core\Assets\Factory\AssetHtml;
 use Core\Assets\Interface\AssetHtmlInterface;
 use Core\View\Html\Element;
 use Northrook\{MinifierInterface, StylesheetMinifier};
+use RuntimeException;
+use Support\{FileInfo, Normalize};
 
 final class StyleAsset extends AbstractAssetModel implements BundlableAssetInterface
 {
     use BundlableAsset, InlinableAsset;
+
+    private readonly FileInfo $publicAssetPath;
+
+    protected function construct() : void
+    {
+        $this->publicAssetPath = $this->pathfinder->getFileInfo(
+            "{$this->publicAssetsKey}/styles/{$this->getReference()->name}.css",
+        ) ?? throw new RuntimeException();
+    }
 
     public function render( ?array $attributes = null ) : AssetHtmlInterface
     {
@@ -24,7 +35,7 @@ final class StyleAsset extends AbstractAssetModel implements BundlableAssetInter
         $attributes['asset-name'] = $this->getName();
         $attributes['asset-id']   = $this->assetID();
 
-        $this->publicPath->save( $compiledCSS );
+        $this->publicAssetPath->save( $compiledCSS );
 
         if ( $this->prefersInline ) {
             $html = (string) new Element(
@@ -34,8 +45,10 @@ final class StyleAsset extends AbstractAssetModel implements BundlableAssetInter
             );
         }
         else {
+            $url = $this->pathfinder->get( (string) $this->publicAssetPath, $this->publicRootKey );
+
             $attributes['rel']  = 'stylesheet';
-            $attributes['href'] = $this->publicUrl.$this->version();
+            $attributes['href'] = Normalize::url( $url ).$this->version();
 
             $html = (string) new Element( 'link', $attributes );
         }

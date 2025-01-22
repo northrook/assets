@@ -9,7 +9,8 @@ use Core\Assets\Factory\AssetHtml;
 use Core\Assets\Interface\AssetHtmlInterface;
 use Core\View\Html\Element;
 use Northrook\JavaScriptMinifier;
-use Support\FileInfo;
+use Support\{FileInfo, Normalize};
+use RuntimeException;
 
 final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInterface
 {
@@ -23,7 +24,7 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
         'after'  => [],
     ];
 
-    private array $data = [];
+    private readonly FileInfo $publicAssetPath;
 
     protected function compile() : string
     {
@@ -35,6 +36,13 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
         return ( new JavaScriptMinifier( $sources ) )->minify();
     }
 
+    protected function construct() : void
+    {
+        $this->publicAssetPath = $this->pathfinder->getFileInfo(
+            "{$this->publicAssetsKey}/scripts/{$this->getReference()->name}.js",
+        ) ?? throw new RuntimeException();
+    }
+
     public function render( ?array $attributes = null ) : AssetHtmlInterface
     {
         $compiledJS = $this->compile();
@@ -42,7 +50,7 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
         $attributes['asset-name'] = $this->getName();
         $attributes['asset-id']   = $this->assetID();
 
-        $this->publicPath->save( $compiledJS );
+        $this->publicAssetPath->save( $compiledJS );
 
         if ( $this->prefersInline ) {
             $html = (string) new Element(
@@ -52,9 +60,9 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
             );
         }
         else {
-            $this->publicPath->save( $compiledJS );
+            $url = $this->pathfinder->get( (string) $this->publicAssetPath, $this->publicRootKey );
 
-            $attributes['src'] = $this->publicUrl.$this->version();
+            $attributes['src'] = Normalize::url( $url ).$this->version();
 
             $html = (string) new Element( 'script', $attributes );
         }

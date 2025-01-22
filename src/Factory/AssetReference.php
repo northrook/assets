@@ -14,6 +14,9 @@ final class AssetReference implements Stringable
     /** @var string `lower-case.dot.notated` */
     public readonly string $name;
 
+    /** @var string `type.name` */
+    public readonly string $reference;
+
     /**
      * @param Type     $type
      * @param string   $name    `lower-case.dot.notated`
@@ -32,13 +35,15 @@ final class AssetReference implements Stringable
         $type = \strtolower( $this->type->name );
         $name = \strtolower( \trim( $name, '.' ) );
 
-        $fragments = \explode( '.', $name );
+        $fragments = \array_filter( \explode( '.', $name ) );
 
-        if ( ! ( $fragments[0] === $type || $fragments[0] === "{$type}s" ) ) {
-            \array_unshift( $fragments, $type );
+        $this->reference = \implode( '.', $fragments );
+
+        if ( $fragments[0] === $type ) {
+            \array_shift( $fragments );
         }
 
-        $this->name = \implode( '.', \array_filter( $fragments ) );
+        $this->name = \implode( '.', $fragments );
     }
 
     /**
@@ -113,5 +118,17 @@ final class AssetReference implements Stringable
             'name'    => $this->name,
             'sources' => $this->sources,
         ];
+    }
+
+    /**
+     * @param array{type: Type, name: string, sources: string[]} $data
+     *
+     * @return void
+     */
+    public function __unserialize( array $data ) : void
+    {
+        $this->type    = $data['type'];
+        $this->name    = $data['name'];
+        $this->sources = $data['sources'];
     }
 }

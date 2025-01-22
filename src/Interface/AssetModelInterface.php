@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Core\Assets\Interface;
 
 use Core\Assets\Factory\Asset\Type;
-use Core\Assets\Factory\Compiler\AssetReference;
+use Core\Assets\Factory\AssetReference;
 use Core\PathfinderInterface;
 use RuntimeException;
 
@@ -27,7 +27,7 @@ interface AssetModelInterface
 
     public function getName() : string; // {type}.{name}.{dir|variant}
 
-    public function getPublicPath() : string;
+    // public function getPublicPath() : string;
 
     /**
      * @return string[]

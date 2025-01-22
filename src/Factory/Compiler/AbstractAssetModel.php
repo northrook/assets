@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Core\Assets\Factory\Compiler;
 
 use Core\Assets\Factory\Asset\Type;
+use Core\Assets\Factory\AssetReference;
 use Core\Assets\Interface\AssetModelInterface;
 use Core\PathfinderInterface;
 use Support\{FileInfo, Normalize};
-use function String\hashKey;
 use const Support\AUTO;
 
 abstract class AbstractAssetModel implements AssetModelInterface
@@ -16,22 +16,36 @@ abstract class AbstractAssetModel implements AssetModelInterface
     /** @var string `16` character alphanumeric */
     private readonly string $assetID;
 
-    protected readonly FileInfo $publicPath;
+    protected readonly string $publicRootKey;
 
-    protected readonly string $publicUrl;
+    protected readonly string $publicAssetsKey;
 
     final private function __construct(
         private readonly AssetReference     $reference,
         public readonly PathfinderInterface $pathfinder,
     ) {
-        $this->publicPath = $pathfinder->getFileInfo( "dir.assets.public/{$reference->publicUrl}" );
-        \assert( $this->publicPath instanceof FileInfo );
-        $this->publicUrl = Normalize::url( $this->pathfinder->get( $this->publicPath, 'dir.public' ) );
+        // $this->publicPath = $pathfinder->getFileInfo( "dir.assets.public/{$this->relativePublicPath()}" );
+        // \assert( $this->publicPath instanceof FileInfo );
+        // $this->publicUrl = Normalize::url( $this->pathfinder->get( $this->publicPath, 'dir.public' ) );
     }
 
-    public function build( ?string $assetID = null ) : AssetModelInterface
+    abstract protected function construct() : void;
+
+    public function version() : string
     {
+        $version = \hash( 'crc32', $this->assetID );
+        return "?v={$version}";
+    }
+
+    final public function build(
+        ?string $assetID = null,
+        string  $publicRootKey = 'dir.public',
+        string  $publicAssetsKey = 'dir.assets.public',
+    ) : AssetModelInterface {
+        $this->publicRootKey   = $publicRootKey;
+        $this->publicAssetsKey = $publicAssetsKey;
         $this->setAssetID( $assetID );
+        $this->construct();
         return $this;
     }
 
@@ -40,12 +54,6 @@ abstract class AbstractAssetModel implements AssetModelInterface
         PathfinderInterface $pathfinder,
     ) : self {
         return new static( $reference, $pathfinder );
-    }
-
-    public function version() : string
-    {
-        $modified = $this->publicPath->getMTime() ?: $this->assetID();
-        return "?v={$modified}";
     }
 
     /**
@@ -61,21 +69,17 @@ abstract class AbstractAssetModel implements AssetModelInterface
         return $this->reference->type;
     }
 
-    final public function getPublicUrl() : string
-    {
-        return $this->publicUrl;
-    }
+    // final public function getPublicUrl() : string
+    // {
+    //     return $this->publicUrl;
+    // }
 
-    final public function getPublicPath( bool $relative = false ) : string
-    {
-        return $relative
-                ? $this->pathfinder->get(
-                    (string) $this->publicPath,
-                    'dir.public',
-                    true,
-                )
-                : (string) $this->publicPath;
-    }
+    // final public function getPublicPath( bool $relative = false ) : string
+    // {
+    //     return $relative
+    //             ? $this->pathfinder->get( (string) $this->publicPath, 'dir.public' )
+    //             : (string) $this->publicPath;
+    // }
 
     final public function getReference() : AssetReference
     {
@@ -99,14 +103,17 @@ abstract class AbstractAssetModel implements AssetModelInterface
      */
     final protected function setAssetID( ?string $assetID ) : string
     {
-        $this->assetID ??= $assetID ?? hashKey(
-            [
-                $this::class,
-                $this->reference->name,
-                $this->reference->type->name,
-                ...$this->reference->getSources(),
-            ],
-            'implode',
+        $this->assetID ??= $assetID ?? \hash(
+            algo : 'xxh3',
+            data : \implode(
+                ':',
+                [
+                    $this::class,
+                    $this->reference->name,
+                    $this->reference->type->name,
+                    ...\array_keys( $this->reference->getSources() ),
+                ],
+            ),
         );
 
         \assert(
