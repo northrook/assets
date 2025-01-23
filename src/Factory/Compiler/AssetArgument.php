@@ -8,6 +8,9 @@ use Core\Symfony\Interface\ArgumentInterface;
 use Core\Assets\Factory\Asset\Type;
 use Core\Assets\Interface\AssetModelInterface;
 
+/**
+ * @method static AssetModelInterface filter()
+ */
 abstract class AssetArgument implements ArgumentInterface
 {
     /**
@@ -20,6 +23,4 @@ abstract class AssetArgument implements ArgumentInterface
         $method = $reference instanceof Type ? 'addAssetTypeCallback' : 'addAssetReferenceCallback';
         return [$method, [$reference, [self::class, 'filter']]];
     }
-
-    abstract public static function filter( AssetModelInterface $asset ) : AssetModelInterface;
 }
