@@ -9,7 +9,7 @@ use Core\Assets\Factory\Asset\Type;
 use Core\Assets\Interface\AssetModelInterface;
 
 /**
- * @method static AssetModelInterface filter()
+ * @method static AssetModelInterface filter( AssetModelInterface $model )
  */
 abstract class AssetArgument implements ArgumentInterface
 {
@@ -21,6 +21,6 @@ abstract class AssetArgument implements ArgumentInterface
     public static function callback( string|Type $reference ) : array
     {
         $method = $reference instanceof Type ? 'addAssetTypeCallback' : 'addAssetReferenceCallback';
-        return [$method, [$reference, [self::class, 'filter']]];
+        return [$method, [$reference, [static::class, 'filter']]];
     }
 }
