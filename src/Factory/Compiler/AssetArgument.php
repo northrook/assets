@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Core\Assets\Factory\Compiler;
 
-use Core\Assets\Interface\AssetModelInterface;
 use Core\Symfony\Interface\ArgumentInterface;
-use Core\Assets\Factory\Asset\{Type};
+use Core\Assets\Factory\Asset\Type;
+use Core\Assets\Interface\AssetModelInterface;
 
 abstract class AssetArgument implements ArgumentInterface
 {
@@ -16,19 +18,8 @@ abstract class AssetArgument implements ArgumentInterface
     public static function callback( string|Type $reference ) : array
     {
         $method = $reference instanceof Type ? 'addAssetTypeCallback' : 'addAssetReferenceCallback';
-        return [
-            $method,
-            [
-                $reference,
-                [self::class, 'filter'],
-            ],
-        ];
+        return [$method, [$reference, [self::class, 'filter']]];
     }
 
     abstract public static function filter( AssetModelInterface $asset ) : AssetModelInterface;
 }
-
-/*
- array{string, array{string, callable(): mixed}}
-array{'addAssetReferenceCa…'|'addAssetTypeCallback', array{Core\Assets\Factory\Asset\Type|string, array{'Core\\Assets\\Factory\\Compiler\\AssetArgument', 'filter'}}}.
- */
