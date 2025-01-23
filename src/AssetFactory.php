@@ -44,13 +44,13 @@ class AssetFactory
         protected readonly ?LoggerInterface    $logger = null,
     ) {}
 
-    final public function addAssetModelCallback( string $asset, callable $callback ) : self
+    final public function addAssetReferenceCallback( string $reference, callable $callback ) : self
     {
         if ( $this->lock ) {
-            $message = "Unable to add assetModelCallback to '{$asset}', the AssetManager is locked.";
+            $message = "Unable to add assetModelCallback to '{$reference}', the AssetManager is locked.";
             throw new RuntimeException( $message );
         }
-        $this->assetModelCallback[$asset] = $callback;
+        $this->assetModelCallback[$reference] = $callback;
         return $this;
     }
 
@@ -182,16 +182,16 @@ class AssetFactory
     private function handleAssetCallback( AssetModelInterface &$assetModel ) : void
     {
         if ( \array_key_exists(
-            $assetModel->getType()->name,
+            $type = $assetModel->getType()->name,
             $this->assetTypeCallback,
         ) ) {
-            $assetModel = ( $this->assetTypeCallback[$assetModel->getType()->name] )( $assetModel );
+            $assetModel = ( $this->assetTypeCallback[$type] )( $assetModel );
         }
         if ( \array_key_exists(
-            $assetModel->getName(),
+            $reference = $assetModel->getReference()->reference,
             $this->assetModelCallback,
         ) ) {
-            $assetModel = ( $this->assetModelCallback[$assetModel->getName()] )( $assetModel );
+            $assetModel = ( $this->assetModelCallback[$reference] )( $assetModel );
         }
     }
 }

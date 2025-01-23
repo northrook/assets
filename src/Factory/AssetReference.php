@@ -51,7 +51,7 @@ final class AssetReference implements Stringable
      */
     public function __toString() : string
     {
-        return $this->name;
+        return $this->reference;
     }
 
     /**
@@ -114,9 +114,10 @@ final class AssetReference implements Stringable
     {
         \ksort( $this->sources );
         return [
-            'type'    => $this->type,
-            'name'    => $this->name,
-            'sources' => $this->sources,
+            'type'      => $this->type,
+            'name'      => $this->name,
+            'reference' => $this->reference,
+            'sources'   => $this->sources,
         ];
     }
 
@@ -127,8 +128,9 @@ final class AssetReference implements Stringable
      */
     public function __unserialize( array $data ) : void
     {
-        $this->type    = $data['type'];
-        $this->name    = $data['name'];
-        $this->sources = $data['sources'];
+        $this->type      = $data['type'];
+        $this->name      = $data['name'];
+        $this->reference = $data['reference'];
+        $this->sources   = $data['sources'];
     }
 }
