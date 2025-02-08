@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Core\Assets\Factory\Compiler;
 
-use Support\FileInfo;
+use Stringable;
 
 interface BundlableAssetInterface
 {
-    public function addSource( string|FileInfo $source, bool $before = false ) : self;
+    public function addSource( string|Stringable $source, bool $before = false ) : self;
 }

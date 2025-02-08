@@ -6,7 +6,7 @@ namespace Core\Assets\Interface;
 
 use Core\Assets\Factory\Asset\Type;
 use Core\Assets\Factory\AssetReference;
-use Core\PathfinderInterface;
+use Core\Interface\PathfinderInterface;
 use RuntimeException;
 
 interface AssetModelInterface

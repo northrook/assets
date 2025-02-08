@@ -7,7 +7,7 @@ namespace Core\Assets\Factory\Compiler;
 use Core\Assets\Factory\Asset\Type;
 use Core\Assets\Factory\AssetReference;
 use Core\Assets\Interface\AssetModelInterface;
-use Core\PathfinderInterface;
+use Core\Interface\PathfinderInterface;
 use const Support\AUTO;
 
 abstract class AbstractAssetModel implements AssetModelInterface

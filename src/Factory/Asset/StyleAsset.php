@@ -7,20 +7,22 @@ namespace Core\Assets\Factory\Asset;
 use Core\Assets\Factory\Compiler\{AbstractAssetModel, BundlableAssetInterface, InlinableAsset, BundlableAsset};
 use Core\Assets\Factory\AssetHtml;
 use Core\Assets\Interface\AssetHtmlInterface;
-use Core\View\Html\Element;
+use Core\Pathfinder\Path;
+use Core\View\Element;
 use Northrook\{MinifierInterface, StylesheetMinifier};
 use RuntimeException;
-use Support\{FileInfo, Normalize};
+use InvalidArgumentException;
+use Support\{Normalize};
 
 final class StyleAsset extends AbstractAssetModel implements BundlableAssetInterface
 {
     use BundlableAsset, InlinableAsset;
 
-    private readonly FileInfo $publicAssetPath;
+    private readonly Path $publicAssetPath;
 
     protected function construct() : void
     {
-        $this->publicAssetPath = $this->pathfinder->getFileInfo(
+        $this->publicAssetPath = $this->pathfinder->getPath(
             "{$this->publicAssetsKey}/styles/{$this->getReference()->name}.css",
         ) ?? throw new RuntimeException();
     }
@@ -46,6 +48,12 @@ final class StyleAsset extends AbstractAssetModel implements BundlableAssetInter
         }
         else {
             $url = $this->pathfinder->get( (string) $this->publicAssetPath, $this->publicRootKey );
+
+            if ( ! $url ) {
+                throw new InvalidArgumentException(
+                    'No URL provided.',
+                );
+            }
 
             $attributes['rel']  = 'stylesheet';
             $attributes['href'] = Normalize::url( $url ).$this->version();

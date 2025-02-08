@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Core\Assets\Exception;
 
 use JetBrains\PhpStorm\Pure;
-use Throwable;
+use Throwable, Exception;
 use const HTTP\FAILED_DEPENDENCY_424;
-use Exception;
 
 /**
  * @TODO Add `$didYouMean` support.

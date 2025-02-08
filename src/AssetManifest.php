@@ -58,7 +58,7 @@ final readonly class AssetManifest implements AssetManifestInterface
 
     final public function commit() : bool
     {
-        return $this->storage->save();
+        return $this->storage->commit();
     }
 
     /**

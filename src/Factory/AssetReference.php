@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Core\Assets\Factory;
 
 use Core\Assets\Factory\Asset\Type;
-use Stringable;
-use Support\FileInfo;
-use InvalidArgumentException;
+use Core\Pathfinder\Path;
+use Stringable, InvalidArgumentException;
 
 final class AssetReference implements Stringable
 {
@@ -55,22 +54,22 @@ final class AssetReference implements Stringable
     }
 
     /**
-     * @param FileInfo|string|Stringable $path
-     * @param ?string                    $key
-     * @param bool                       $override
+     * @param string|Stringable $path
+     * @param ?string           $key
+     * @param bool              $override
      *
      * @return void
      */
     public function addSource(
-        string|Stringable|FileInfo $path,
-        ?string                    $key = null,
-        bool                       $override = false,
+        string|Stringable $path,
+        ?string           $key = null,
+        bool              $override = false,
     ) : void {
-        if ( ! $path instanceof FileInfo ) {
-            $path = new FileInfo( $path );
+        if ( ! $path instanceof Path ) {
+            $path = new Path( $path );
         }
 
-        if ( $path->isDir() ) {
+        if ( $path->isDirectory() ) {
             foreach ( $path->glob( '/*'.$path->getExtension() ) as $glob ) {
                 $this->addSource( $glob );
             }

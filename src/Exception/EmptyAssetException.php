@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Assets\Exception;
 
-use ValueError;
-use Throwable;
+use ValueError, Throwable;
 
 final class EmptyAssetException extends ValueError
 {

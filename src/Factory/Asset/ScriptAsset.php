@@ -7,16 +7,18 @@ namespace Core\Assets\Factory\Asset;
 use Core\Assets\Factory\Compiler\{AbstractAssetModel, BundlableAssetInterface, InlinableAsset, JavascriptAssetCompiler};
 use Core\Assets\Factory\AssetHtml;
 use Core\Assets\Interface\AssetHtmlInterface;
+use Core\Pathfinder\Path;
 use Core\View\Html\Element;
 use Northrook\JavaScriptMinifier;
-use Support\{FileInfo, Normalize};
+use Support\{Normalize};
 use RuntimeException;
+use Stringable;
 
 final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInterface
 {
     use InlinableAsset;
 
-    /** @var array{before: FileInfo[]|string[], import: FileInfo[], source: ?FileInfo, after: FileInfo[]|string[]} */
+    /** @var array{before: Path[]|string[], import: Path[], source: ?Path, after: Path[]|string[]} */
     protected array $sources = [
         'before' => [],
         'import' => [],
@@ -24,7 +26,7 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
         'after'  => [],
     ];
 
-    private readonly FileInfo $publicAssetPath;
+    private readonly Path $publicAssetPath;
 
     protected function compile() : string
     {
@@ -38,7 +40,7 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
 
     protected function construct() : void
     {
-        $this->publicAssetPath = $this->pathfinder->getFileInfo(
+        $this->publicAssetPath = $this->pathfinder->getPath(
             "{$this->publicAssetsKey}/scripts/{$this->getReference()->name}.js",
         ) ?? throw new RuntimeException();
     }
@@ -75,13 +77,13 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
         );
     }
 
-    final public function addSource( string|FileInfo $source, bool $before = false ) : self
+    final public function addSource( string|Stringable $source, bool $before = false ) : self
     {
         if ( $before ) {
-            $this->sources['before'][] = $source;
+            $this->sources['before'][] = $source instanceof Path ? $source : new Path( $source );
         }
         else {
-            $this->sources['after'][] = $source;
+            $this->sources['after'][] = $source instanceof Path ? $source : new Path( $source );
         }
         return $this;
     }

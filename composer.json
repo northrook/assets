@@ -21,6 +21,7 @@
   "prefer-stable": true,
   "require": {
     "php": ">=8.3",
+    "northrook/core": "dev-main",
     "northrook/pathfinder": "dev-main",
     "northrook/minify": "dev-main",
     "northrook/cache": "dev-main",

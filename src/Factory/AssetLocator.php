@@ -6,7 +6,8 @@ namespace Core\Assets\Factory;
 
 use Core\Assets\Factory\Asset\Type;
 use Core\Assets\Interface\AssetManifestInterface;
-use Core\PathfinderInterface;
+use Core\Interface\PathfinderInterface;
+use Core\Pathfinder\Path;
 use Psr\Log\LoggerInterface;
 use Support\{FileInfo};
 use RuntimeException;
@@ -134,13 +135,13 @@ final readonly class AssetLocator
         $directories = [];
 
         foreach ( $this->scanDirectories as $directory ) {
-            $scan = $this->pathfinder->getFileInfo( $directory );
+            $scan = $this->pathfinder->getPath( $directory );
             if ( ! $type ) {
                 $directories[] = $scan;
             }
 
-            foreach ( $scan->glob( "/{$this->typeDirectory( $type )}", asFileInfo : true ) as $typePath ) {
-                if ( $typePath->isDir() ) {
+            foreach ( $scan->glob( "/{$this->typeDirectory( $type )}" ) as $typePath ) {
+                if ( $typePath->isDirectory() ) {
                     $directories[] = $typePath;
                 }
             }
@@ -204,9 +205,9 @@ final readonly class AssetLocator
         };
     }
 
-    private function getPublicDirectory() : FileInfo
+    private function getPublicDirectory() : Path
     {
-        return $this->pathfinder->getFileInfo( $this->publicDirectory )
+        return $this->pathfinder->getPath( $this->publicDirectory )
                ?? throw new RuntimeException();
     }
 }

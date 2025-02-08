@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Core\Assets\Factory\Compiler;
 
-use Support\FileInfo;
+use Core\Pathfinder\Path;
+use Stringable;
 
 trait BundlableAsset
 {
-    /** @var array{before: FileInfo[]|string[], source: FileInfo[]|string[], after: FileInfo[]|string[]} */
+    /** @var array{before: Path[]|string[], source: Path[]|string[], after: Path[]|string[]} */
     protected array $sources = [
         'before' => [],
         'source' => [],
@@ -26,13 +27,13 @@ trait BundlableAsset
         ];
     }
 
-    final public function addSource( string|FileInfo $source, bool $before = false ) : self
+    final public function addSource( string|Stringable $source, bool $before = false ) : self
     {
         if ( $before ) {
-            $this->sources['before'][] = $source;
+            $this->sources['before'][] = $source instanceof Path ? $source : new Path( $source );
         }
         else {
-            $this->sources['after'][] = $source;
+            $this->sources['after'][] = $source instanceof Path ? $source : new Path( $source );
         }
         return $this;
     }

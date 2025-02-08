@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Core\Assets;
 
-use Core\Assets\Factory\{AssetLocator, AssetReference};
-use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
-use Core\Assets\Interface\{AssetHtmlInterface, AssetManifestInterface, AssetModelInterface};
-use Core\Assets\Factory\Asset\{ImageAsset, ScriptAsset, StyleAsset, Type};
-use Core\PathfinderInterface;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
+use Core\Interface\PathfinderInterface;
+use Core\Assets\Interface\{AssetHtmlInterface, AssetManifestInterface, AssetModelInterface};
+use Core\Assets\Factory\{AssetLocator, AssetReference};
+use Core\Assets\Factory\Asset\{ImageAsset, ScriptAsset, StyleAsset, Type};
+use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use RuntimeException;
 
 #[Autoconfigure(
     lazy   : true,

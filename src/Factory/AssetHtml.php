@@ -6,7 +6,7 @@ namespace Core\Assets\Factory;
 
 use Core\Assets\Interface\AssetHtmlInterface;
 use Core\Assets\Factory\Asset\Type;
-use Support\Interface\DataObject;
+use Core\Interface\DataObject;
 use Latte\Runtime as View;
 use Stringable;
 

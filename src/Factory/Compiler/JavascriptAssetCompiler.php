@@ -4,21 +4,24 @@ declare(strict_types=1);
 
 namespace Core\Assets\Factory\Compiler;
 
+use Core\Pathfinder\Path;
 use Northrook\JavaScriptMinifier;
-use Support\FileInfo;
+use Stringable;
 
 final class JavascriptAssetCompiler
 {
     private const string NEWLINE = "\n";
 
-    private readonly FileInfo $source;
+    private readonly Path $source;
 
     protected string $content;
 
-    public function __construct( string|FileInfo $source )
+    public function __construct( string|Stringable $source )
     {
-        $this->source  = $source instanceof FileInfo ? $source : new FileInfo( $source );
-        $this->content = $this->normalizeNewline( $this->source->getContents( true ) );
+        $this->source  = $source instanceof Path ? $source : new Path( $source );
+        $this->content = $this->normalizeNewline(
+            (string) $this->source->getContents( true ),
+        );
     }
 
     public function minify() : string
@@ -70,9 +73,9 @@ final class JavascriptAssetCompiler
      *
      * @param string $string
      *
-     * @return FileInfo
+     * @return Path
      */
-    private function importStatement( string $string ) : FileInfo
+    private function importStatement( string $string ) : Path
     {
         // Trim import statement, quotes and whitespace, and slashes
         $fileName = \trim( \substr( $string, \strlen( 'import ' ) ), " \n\r\t\v\0'\"/\\" );
@@ -81,6 +84,6 @@ final class JavascriptAssetCompiler
             $fileName .= '.js';
         }
 
-        return new FileInfo( $this->source->getPath()."/{$fileName}" );
+        return new Path( $this->source->getPath()."/{$fileName}" );
     }
 }
