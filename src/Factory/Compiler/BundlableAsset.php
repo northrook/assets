@@ -30,10 +30,10 @@ trait BundlableAsset
     final public function addSource( string|Stringable $source, bool $before = false ) : self
     {
         if ( $before ) {
-            $this->sources['before'][] = $source instanceof Path ? $source : new Path( $source );
+            $this->sources['before'][] = $source;
         }
         else {
-            $this->sources['after'][] = $source instanceof Path ? $source : new Path( $source );
+            $this->sources['after'][] = $source;
         }
         return $this;
     }

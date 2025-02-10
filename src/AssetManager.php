@@ -7,9 +7,9 @@ namespace Core\Assets;
 use Core\Assets\Factory\AssetReference;
 use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
 use Core\Assets\Interface\{AssetHtmlInterface, AssetManagerInterface, AssetModelInterface};
-use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Lazy;
 use Symfony\Contracts\Cache\CacheInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Provides the Asset Manager Service to the Framework.

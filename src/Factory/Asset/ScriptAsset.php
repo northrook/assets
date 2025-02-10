@@ -8,7 +8,7 @@ use Core\Assets\Factory\Compiler\{AbstractAssetModel, BundlableAssetInterface, I
 use Core\Assets\Factory\AssetHtml;
 use Core\Assets\Interface\AssetHtmlInterface;
 use Core\Pathfinder\Path;
-use Core\View\Html\Element;
+use Core\View\Element;
 use Northrook\JavaScriptMinifier;
 use Support\{Normalize};
 use RuntimeException;

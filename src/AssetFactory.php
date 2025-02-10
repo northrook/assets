@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Core\Assets;
 
-use Psr\Log\LoggerInterface;
 use Core\Interface\PathfinderInterface;
 use Core\Assets\Interface\{AssetHtmlInterface, AssetManifestInterface, AssetModelInterface};
 use Core\Assets\Factory\{AssetLocator, AssetReference};
 use Core\Assets\Factory\Asset\{ImageAsset, ScriptAsset, StyleAsset, Type};
 use Core\Assets\Exception\{InvalidAssetTypeException, UndefinedAssetReferenceException};
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 #[Autoconfigure(

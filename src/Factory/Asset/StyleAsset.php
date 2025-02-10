@@ -10,7 +10,6 @@ use Core\Assets\Interface\AssetHtmlInterface;
 use Core\Pathfinder\Path;
 use Core\View\Element;
 use Northrook\{MinifierInterface, StylesheetMinifier};
-use RuntimeException;
 use InvalidArgumentException;
 use Support\{Normalize};
 
@@ -24,7 +23,7 @@ final class StyleAsset extends AbstractAssetModel implements BundlableAssetInter
     {
         $this->publicAssetPath = $this->pathfinder->getPath(
             "{$this->publicAssetsKey}/styles/{$this->getReference()->name}.css",
-        ) ?? throw new RuntimeException();
+        );
     }
 
     public function render( ?array $attributes = null ) : AssetHtmlInterface

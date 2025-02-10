@@ -9,7 +9,6 @@ use Core\Assets\Interface\AssetManifestInterface;
 use Core\Interface\PathfinderInterface;
 use Core\Pathfinder\Path;
 use Psr\Log\LoggerInterface;
-use Support\{FileInfo};
 use RuntimeException;
 use Exception;
 
@@ -71,7 +70,7 @@ final readonly class AssetLocator
 
         foreach ( $this->assetDirectories( $type ) as $scanDirectory ) {
             foreach ( ( $scanDirectory->glob( ['/*.js'] ) ) as $fileInfo ) {
-                [$reference, $path] = $this->resolveAssetGlob( $fileInfo, $scanDirectory, $type );
+                [$reference, $path] = $this->resolveAssetGlob( (string) $fileInfo, $scanDirectory, $type );
 
                 $this->assetReference( $reference, $type )?->addSource( $path );
             }
@@ -84,7 +83,7 @@ final readonly class AssetLocator
 
         foreach ( $this->assetDirectories( $type ) as $scanDirectory ) {
             foreach ( ( $scanDirectory->glob( ['/*.css', '/*/*.css'] ) ) as $fileInfo ) {
-                [$name, $path] = $this->resolveAssetGlob( $fileInfo, $scanDirectory, $type );
+                [$name, $path] = $this->resolveAssetGlob( (string) $fileInfo, $scanDirectory, $type );
 
                 $this->assetReference( $name, $type )?->addSource( $path );
             }
@@ -103,13 +102,13 @@ final readonly class AssetLocator
     }
 
     /**
-     * @param string   $assetPath
-     * @param FileInfo $scanDirectory
-     * @param Type     $type
+     * @param string $assetPath
+     * @param Path   $scanDirectory
+     * @param Type   $type
      *
      * @return array{string,string}
      */
-    private function resolveAssetGlob( string $assetPath, FileInfo $scanDirectory, Type $type ) : array
+    private function resolveAssetGlob( string $assetPath, Path $scanDirectory, Type $type ) : array
     {
         $trimmedPath = \trim( \substr( $assetPath, \strlen( $scanDirectory->getPathname() ) ), DIRECTORY_SEPARATOR );
 
@@ -128,7 +127,7 @@ final readonly class AssetLocator
     /**
      * @param null|Type $type
      *
-     * @return FileInfo[]
+     * @return Path[]
      */
     public function assetDirectories( ?Type $type = null ) : array
     {
@@ -157,7 +156,7 @@ final readonly class AssetLocator
      *
      * @param 'document'|'font'|'image'|'root'|'script'|'style'|'video'|Type ...$get
      *
-     * @return array<string, FileInfo>
+     * @return array<string, Path>
      */
     final public function getAssetDirectories( string|Type ...$get ) : array
     {
@@ -173,7 +172,7 @@ final readonly class AssetLocator
         //             throw new InvalidArgumentException( $message );
         //         }
         //
-        //         $directories[$key] = $this->pathfinder->getFileInfo(
+        //         $directories[$key] = $this->pathfinder->getPath(
         //                 $this->assetDirectories[$key],
         //         );
         //     }
