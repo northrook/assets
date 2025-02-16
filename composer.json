@@ -30,8 +30,6 @@
   "require-dev": {
     "symfony/framework-bundle": "@stable",
     "latte/latte": "@stable",
-    "northrook/dev-env": "dev-main",
-    "phpstan/phpstan": "@stable",
-    "northrook/settings": "dev-main"
+    "northrook/dev": "dev-main"
   }
 }

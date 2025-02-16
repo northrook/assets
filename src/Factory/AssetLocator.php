@@ -61,6 +61,7 @@ final readonly class AssetLocator
             Type::ARCHIVE     => null,
             default           => throw new RuntimeException( $type->name.' has yet to be implemented.' ),
         };
+
         return $this;
     }
 

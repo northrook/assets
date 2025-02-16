@@ -9,7 +9,6 @@ use Core\Assets\Factory\AssetHtml;
 use Core\Assets\Interface\AssetHtmlInterface;
 use Core\Pathfinder\Path;
 use Core\View\Element;
-use Northrook\{MinifierInterface, StylesheetMinifier};
 use InvalidArgumentException;
 use Support\{Normalize};
 
@@ -28,9 +27,7 @@ final class StyleAsset extends AbstractAssetModel implements BundlableAssetInter
 
     public function render( ?array $attributes = null ) : AssetHtmlInterface
     {
-        $compiledCSS = ( new StylesheetMinifier(
-            $this->getSources(),
-        ) )->minify();
+        $compiledCSS = __METHOD__.'::DEPRECATED';
 
         // $this->prefersInline = true;
         $attributes['asset-name'] = $this->getName();
@@ -66,15 +63,5 @@ final class StyleAsset extends AbstractAssetModel implements BundlableAssetInter
             $this->getType(),
             $html,
         );
-    }
-
-    /**
-     * @param null|MinifierInterface $compiler
-     *
-     * @return MinifierInterface
-     */
-    protected function compiler( ?MinifierInterface $compiler = null ) : MinifierInterface
-    {
-        return $this->compiler ??= $compiler ?? new StylesheetMinifier();
     }
 }

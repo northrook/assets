@@ -9,8 +9,7 @@ use Core\Assets\Factory\AssetHtml;
 use Core\Assets\Interface\AssetHtmlInterface;
 use Core\Pathfinder\Path;
 use Core\View\Element;
-use Northrook\JavaScriptMinifier;
-use Support\{Normalize};
+use Support\Normalize;
 use RuntimeException;
 use Stringable;
 
@@ -35,7 +34,8 @@ final class ScriptAsset extends AbstractAssetModel implements BundlableAssetInte
         foreach ( $this->getReference()->getSources() as $source ) {
             $sources[] = ( new JavascriptAssetCompiler( $source ) )->compile();
         }
-        return ( new JavaScriptMinifier( $sources ) )->minify();
+
+        return __METHOD__.'::DEPRECATED';
     }
 
     protected function construct() : void
