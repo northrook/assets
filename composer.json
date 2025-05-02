@@ -14,9 +14,6 @@
       "Core\\Assets\\": "src"
     }
   },
-  "scripts": {
-    "phpstan": "vendor/bin/phpstan analyse"
-  },
   "minimum-stability": "dev",
   "prefer-stable": true,
   "require": {
@@ -25,11 +22,15 @@
     "northrook/pathfinder": "dev-main",
     "northrook/minify": "dev-main",
     "northrook/cache": "dev-main",
-    "northrook/view": "dev-main"
+    "northrook/view": "dev-main",
+    "symfony/finder": "^7.2",
+    "voku/portable-ascii": "^2.0"
   },
   "require-dev": {
     "symfony/framework-bundle": "@stable",
-    "latte/latte": "@stable",
     "northrook/dev": "dev-main"
+  },
+  "scripts": {
+    "phpstan": "vendor/bin/phpstan analyse src"
   }
 }
