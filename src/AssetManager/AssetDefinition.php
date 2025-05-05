@@ -47,17 +47,6 @@ abstract class AssetDefinition implements AssetInterface, LoggerAwareInterface
         return $this;
     }
 
-    public function getHtml() : string
-    {
-        return $this->getElement()->__toString();
-    }
-
-    final public function __toString() : string
-    {
-        // check if build() has been called
-        return $this->getHtml();
-    }
-
     /**
      * Called by the {@see AssetManager} when retrieving an Asset.
      *
@@ -68,6 +57,17 @@ abstract class AssetDefinition implements AssetInterface, LoggerAwareInterface
     public function build() : self
     {
         return $this;
+    }
+
+    public function getHtml() : string
+    {
+        return $this->getElement()->__toString();
+    }
+
+    final public function __toString() : string
+    {
+        // check if build() has been called
+        return $this->getHtml();
     }
 
     /**
@@ -107,6 +107,16 @@ abstract class AssetDefinition implements AssetInterface, LoggerAwareInterface
     final public function setLogger( ?LoggerInterface $logger ) : void
     {
         $this->logger = $logger;
+    }
+
+    public function getVersion() : string
+    {
+        return (string) $this->meta->getVersion();
+    }
+
+    public function getAssetId() : string
+    {
+        return (string) $this->meta->getAssetId();
     }
 
     /**

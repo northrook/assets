@@ -422,8 +422,4 @@ class ImageAsset extends AssetDefinition
         return $this->getFallbackSource().( $version ? "?v={$this->getVersion()}" : '' );
     }
 
-    public function getVersion() : string
-    {
-        return (string) $this->meta->getVersion();
-    }
 }
