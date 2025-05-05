@@ -5,6 +5,7 @@ namespace Core\AssetManager;
 use Core\{AssetManager, Pathfinder, Symfony\Console\ListReport};
 use Core\Symfony\DependencyInjection\CompilerPass;
 use Symfony\Component\DependencyInjection\{ContainerBuilder, Definition, Parameter, Reference};
+use Symfony\Component\Config\Loader\ParamConfigurator;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ReferenceConfigurator;
 use ReflectionClass;
 
@@ -27,12 +28,12 @@ final class RegisterAssetsPass extends CompilerPass
     protected readonly Definition $cacheDefinition;
 
     /**
-     * @param ReferenceConfigurator      $manifestDirectory
+     * @param ParamConfigurator          $manifestDirectory
      * @param ReferenceConfigurator      $pathfinder        {@see Pathfinder}
      * @param null|ReferenceConfigurator $cache             {@see CacheItemPoolInterface}
      */
     public function __construct(
-        protected ReferenceConfigurator  $manifestDirectory,
+        protected ParamConfigurator      $manifestDirectory,
         protected ReferenceConfigurator  $pathfinder,
         protected ?ReferenceConfigurator $cache = null,
     ) {
