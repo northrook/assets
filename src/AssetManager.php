@@ -8,14 +8,16 @@ namespace Core;
 
 use Cache\CachePoolTrait;
 use Core\Asset\Meta;
-use Core\AssetManager\{AssetDefinition, AssetInterface};
+use Core\AssetManager\{AssetDefinition, AssetInterface, DetachedAsset};
 use Core\Exception\AssetException;
 use Core\Interface\LazyService;
+use Core\View\Element;
 use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use InvalidArgumentException;
 use LogicException;
+use function Support\{is_path, is_url};
 
 class AssetManager implements LazyService, LoggerAwareInterface
 {
@@ -25,11 +27,13 @@ class AssetManager implements LazyService, LoggerAwareInterface
 
     /**
      * @param string                               $manifestDirectory
+     * @param Pathfinder                           $pathfinder
      * @param null|ServiceLocator<AssetDefinition> $serviceLocator
      * @param ?CacheItemPoolInterface              $cache
      */
     final public function __construct(
         public readonly string             $manifestDirectory,
+        protected readonly Pathfinder      $pathfinder,
         protected readonly ?ServiceLocator $serviceLocator = null,
         ?CacheItemPoolInterface            $cache = null,
     ) {
@@ -41,7 +45,21 @@ class AssetManager implements LazyService, LoggerAwareInterface
         // ?? If $asset is a URL, always assume Detached
         // ?? If $asset is a local path, check for Manifest
         // .. Create ad-hoc Manifests for images etc.
-        return $this->getAssetDefinition( $asset );
+        return match ( true ) {
+            is_path( $asset ) => $this->resolveLocalAsset( $asset ),
+            is_url( $asset )  => $this->resolveRemoteAsset( $asset ),
+            default           => $this->getRegisteredAsset( $asset ),
+        };
+    }
+
+    final protected function resolveLocalAsset( string $asset ) : AssetInterface
+    {
+        return new DetachedAsset( __METHOD__, new Element( 'local' ) );
+    }
+
+    final protected function resolveRemoteAsset( string $asset ) : AssetInterface
+    {
+        return new DetachedAsset( __METHOD__, new Element( 'remote' ) );
     }
 
     /**
@@ -49,20 +67,16 @@ class AssetManager implements LazyService, LoggerAwareInterface
      *
      * @return AssetDefinition
      */
-    final public function getAssetDefinition( string $asset ) : AssetDefinition
+    final public function getRegisteredAsset( string $asset ) : AssetDefinition
     {
         if ( ! $this->serviceLocator ) {
             throw new LogicException( 'Service locator is not set.' );
         }
 
         if ( \strlen( $asset ) === 16 && \ctype_alnum( $asset ) ) {
-            $manifestPath = $this->manifestDirectory.'/'.$asset.'.php';
-
-            if ( ! \file_exists( $manifestPath ) ) {
-                throw new InvalidArgumentException( 'Asset is not registered.' );
-            }
-
-            $asset = $this->getAssetMeta( $asset )->get( 'class', AssetInterface::class );
+            $asset = $this
+                ->getAssetMeta( $asset )
+                ->get( 'class', AssetInterface::class );
         }
 
         if ( ! \is_subclass_of( $asset, AssetDefinition::class ) ) {
@@ -74,6 +88,11 @@ class AssetManager implements LazyService, LoggerAwareInterface
         }
 
         return $this->serviceLocator->get( $asset );
+    }
+
+    final public function hasAssetMeta( string $key ) : bool
+    {
+        return \file_exists( $this->manifestDirectory.'/'.$key.'.php' );
     }
 
     /**

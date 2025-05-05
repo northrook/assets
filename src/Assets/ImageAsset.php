@@ -6,6 +6,8 @@ namespace Core\Assets;
 
 use Core\AssetManager\AssetDefinition;
 use Core\View\Element;
+use Intervention\Image\Interfaces\ImageInterface;
+use Support\Image\{Aspect, Orientation};
 
 /**
  * Extend this class to create an image asset.
@@ -14,12 +16,18 @@ class ImageAsset extends AssetDefinition
 {
     public readonly string $source;
 
+    private readonly ImageInterface $image;
+
+    public readonly Orientation $orientation;
+
+    public readonly Aspect $aspect;
+
     public function __invoke(
-        ?string $source = null,
+        string $source,
     ) : self {
-        $this->source = $source ?? '';
-        // $this->aspect      = Aspect::from( $this->source );
-        // $this->orientation = $this->aspect->orientation;
+        $this->source      = $source;
+        $this->aspect      = Aspect::from( $this->source );
+        $this->orientation = $this->aspect->orientation;
         return $this;
     }
 

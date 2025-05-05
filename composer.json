@@ -24,7 +24,8 @@
     "northrook/cache": "dev-main",
     "northrook/view": "dev-main",
     "symfony/finder": "^7.2",
-    "voku/portable-ascii": "^2.0"
+    "voku/portable-ascii": "^2.0",
+    "northrook/image": "dev-main"
   },
   "require-dev": {
     "symfony/framework-bundle": "@stable",
