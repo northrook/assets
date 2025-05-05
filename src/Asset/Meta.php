@@ -20,7 +20,7 @@ final class Meta implements DataInterface
     /** @var array<string,mixed> */
     private array $data;
 
-    private ?string $hash;
+    private ?string $hash = null;
 
     private false|string $filePath = false;
 
@@ -48,7 +48,7 @@ final class Meta implements DataInterface
             'sources' => $sources,
         ];
 
-        unset( $meta['key'] );
+        unset( $meta['assetId'] );
 
         foreach ( $meta as $key => $value ) {
             $key              = $this->validateKey( $key );
@@ -142,6 +142,26 @@ final class Meta implements DataInterface
         return $this->data['sources'];
     }
 
+    public function getVersion() : int
+    {
+        $version = null;
+
+        foreach ( $this->getSources() as $source ) {
+            if ( \file_exists( $source ) && ( $modTime = \filemtime( $source ) ) ) {
+                $version = \max( $version, $modTime );
+            }
+        }
+
+        return $version ?? throw new AssetException(
+            $this::class." for {$this->type->name} has no version.",
+        );
+    }
+
+    public function getAssetId() : string
+    {
+        return $this->data['assetId'] ?? \hash( 'xxh64', $this->getName().\implode( '.', $this->getSources() ) );
+    }
+
     /**
      * @param array<array-key,string>|string $source
      *
@@ -199,7 +219,7 @@ final class Meta implements DataInterface
         }
 
         $value = \strtolower( $value );
-        if ( \in_array( $value, ['key', 'type', 'class'] ) ) {
+        if ( \in_array( $value, ['assetId', 'type', 'class'] ) ) {
             throw new InvalidArgumentException( "The '{$value}' key is read-only." );
         }
 

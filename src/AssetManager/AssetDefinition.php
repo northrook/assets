@@ -28,6 +28,8 @@ abstract class AssetDefinition implements AssetInterface, LoggerAwareInterface
 
     protected readonly ?LoggerInterface $logger;
 
+    protected Element $element;
+
     public readonly Type $type;
 
     public readonly Meta $meta;
@@ -121,6 +123,17 @@ abstract class AssetDefinition implements AssetInterface, LoggerAwareInterface
      * @param mixed ...$attributes
      */
     abstract public function getElement( mixed ...$attributes ) : Element;
+
+    final protected function fileName( ?string $ext = null ) : string
+    {
+        $fileName = \str_replace( '.', '/', $this->meta->getName() );
+
+        if ( $ext ) {
+            $fileName .= '.'.\trim( $ext, '.' );
+        }
+
+        return $fileName;
+    }
 
     private function hasDependencies() : bool
     {
