@@ -2,54 +2,39 @@
 
 namespace Core\AssetManager;
 
-use Core\View\Element;
-use Stringable;
-
-interface AssetInterface extends Stringable
+interface AssetInterface
 {
     /**
-     * Parses and compiles all provided sources.
-     *
-     * Called by the {@see \Core\AssetManager}.
-     *
-     * @return self
+     * @return string absolute path to the public asset
      */
-    public function build() : self;
+    public function getPath() : string;
 
     /**
-     * @return string Absolute path to the source file
-     */
-    public function getSourcePath() : string;
-
-    /**
-     * @param bool $version Append `?v=`{@see self::getVersion()}
+     * Returns the URL to the public version of this asset
      *
-     * @return string URL relative to `public`
+     * Returns `absolute` by default.
+     *
+     * ```
+     * absolute: [schema][hostname.tld]/assets/type/fileName.ext
+     * relative: /assets/type/fileName.ext
+     * ```
+     *
+     * @param bool $relative [false]
+     * @param bool $version  Append `?v=`{@see getVersion}
+     *
+     * @return string URL relative to `dir.public`
      */
-    public function getSourceUrl( bool $version = false ) : string;
+    public function getUrl(
+        bool $relative = false,
+        bool $version = false,
+    ) : string;
 
     /**
-     * Get a version string for this Asset.
+     * Get a version string for this AbstractAsset.
      *
      * Provides the {@see self::$assetId} by default.
      *
      * @return string
      */
     public function getVersion() : string;
-
-    /**
-     * @return string
-     */
-    public function getHtml() : string;
-
-    /**
-     * Return the HTML element for this Asset.
-     *
-     * Called when using {@see self::getHtml()} or cast to `string`.
-     *
-     * @param mixed ...$attributes
-     *
-     * @return Element
-     */
-    public function getElement( mixed ...$attributes ) : Element;
 }

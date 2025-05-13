@@ -7,32 +7,46 @@ namespace Core;
 // : MUST allow dynamic fetching of valid sources
 
 use Cache\CachePoolTrait;
-use Core\Asset\Meta;
-use Core\AssetManager\{AssetDefinition, AssetInterface, DetachedAsset};
+use Core\Assets\StyleAsset;
+use Core\Asset\{Meta, Type};
+use Core\AssetManager\{AssetInterface, AssetManifest};
 use Core\Exception\AssetException;
-use Core\Interface\LazyService;
+use Core\Interface\{LazyService, LogHandler, Loggable};
 use Core\View\Element;
-use Psr\Log\{LoggerAwareInterface, LoggerInterface};
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use InvalidArgumentException;
 use LogicException;
+use Stringable;
 use function Support\{is_path, is_url};
 
-class AssetManager implements LazyService, LoggerAwareInterface
+/**
+ * Pathfinder keys:
+ * ```
+ * dir.assets        = %dir.root%/assets
+ * dir.assets.meta   = %dir.core%/var/assets/meta
+ * dir.public        = %dir.root%/public
+ * dir.public.assets = %dir.root%/public/assets
+ * ```
+ */
+class AssetManager implements LazyService, Loggable
 {
-    use CachePoolTrait;
+    public const string LOCATOR_ID = 'assets.service_locator';
 
-    protected ?LoggerInterface $logger = null;
+    public const string MANIFEST_ID = AssetManifest::class;
+
+    use LogHandler, CachePoolTrait;
 
     /**
-     * @param string                               $manifestDirectory
-     * @param Pathfinder                           $pathfinder
-     * @param null|ServiceLocator<AssetDefinition> $serviceLocator
-     * @param ?CacheItemPoolInterface              $cache
+     * @param array<string,string>       $assetDirectories
+     * @param AssetManifest              $manifest
+     * @param Pathfinder                 $pathfinder
+     * @param null|ServiceLocator<Asset> $serviceLocator
+     * @param ?CacheItemPoolInterface    $cache
      */
     final public function __construct(
-        public readonly string             $manifestDirectory,
+        protected readonly array           $assetDirectories,
+        public readonly AssetManifest      $manifest,
         protected readonly Pathfinder      $pathfinder,
         protected readonly ?ServiceLocator $serviceLocator = null,
         ?CacheItemPoolInterface            $cache = null,
@@ -40,59 +54,99 @@ class AssetManager implements LazyService, LoggerAwareInterface
         $this->assignCacheAdapter( $cache, 'assets' );
     }
 
+    /**
+     * Accepts
+     *
+     * @param string $asset
+     *
+     * @return AssetInterface
+     */
     final public function getAsset( string $asset ) : AssetInterface
     {
+        // :: Identifier - can be:
+        // . final AssetClass | hexdec16
+        // :: Can be called as a non-registered by direct path/url
+        // :: Assets with an Identifier have persistent Meta
+        // :: In Templates, they are called by <asset:Identifier /> for "slot" style access
+        // :: but can also be called directly like <link href="assets/style/global.css"..>
+
         // ?? If $asset is a URL, always assume Detached
         // ?? If $asset is a local path, check for Manifest
         // .. Create ad-hoc Manifests for images etc.
         return match ( true ) {
-            is_path( $asset ) => $this->resolveLocalAsset( $asset ),
-            is_url( $asset )  => $this->resolveRemoteAsset( $asset ),
-            default           => $this->getRegisteredAsset( $asset ),
+            // is_path( $asset ) => $this->resolveLocalAsset( $asset ),
+            // is_url( $asset )  => $this->resolveRemoteAsset( $asset ),
+            default => $this->getRegisteredAsset( $asset ),
         };
     }
 
-    final protected function resolveLocalAsset( string $asset ) : AssetInterface
-    {
-        return new DetachedAsset( __METHOD__, new Element( 'local' ) );
-    }
+    // final protected function resolveLocalAsset( string $asset ) : AssetInterface
+    // {
+    //     return new DetachedAsset( __METHOD__, new Element( 'local' ) );
+    // }
 
-    final protected function resolveRemoteAsset( string $asset ) : AssetInterface
-    {
-        return new DetachedAsset( __METHOD__, new Element( 'remote' ) );
-    }
+    // final protected function resolveRemoteAsset( string $asset ) : AssetInterface
+    // {
+    //     return new DetachedAsset( __METHOD__, new Element( 'remote' ) );
+    // }
 
     /**
-     * @param class-string<AssetDefinition>|string $asset
+     * @param class-string<Asset>|string $asset
      *
-     * @return AssetDefinition
+     * @return Asset
      */
-    final public function getRegisteredAsset( string $asset ) : AssetDefinition
+    final public function getRegisteredAsset( string $asset ) : Asset
     {
         if ( ! $this->serviceLocator ) {
             throw new LogicException( 'Service locator is not set.' );
         }
 
+        $meta = $this->manifest->getMeta( $asset );
+
         if ( \strlen( $asset ) === 16 && \ctype_alnum( $asset ) ) {
-            $asset = $this
-                ->getAssetMeta( $asset )
-                ->get( 'class', AssetInterface::class );
+            $asset = $meta->get( 'class', Asset::class );
         }
 
-        if ( ! \is_subclass_of( $asset, AssetDefinition::class ) ) {
+        if ( ! \is_subclass_of( $asset, Asset::class ) ) {
             throw new InvalidArgumentException( 'Class must be a subclass of RegisteredAsset.' );
         }
 
         if ( ! $this->serviceLocator->has( $asset ) ) {
-            throw new InvalidArgumentException( 'Asset is not registered.' );
+            throw new InvalidArgumentException( 'AbstractAsset is not registered.' );
         }
 
         return $this->serviceLocator->get( $asset );
     }
 
+    final public function resolveAssetKey( string|Meta|Asset $from ) : string
+    {
+        $string = match ( true ) {
+            $from instanceof Asset => $from->meta->id,
+            $from instanceof Meta  => $from->id,
+            default                => $from,
+        };
+
+        $length = \strlen( $string );
+
+        if ( \ctype_alnum( $string ) && $length === 16 ) {
+            return $string;
+        }
+
+        if ( $string[3] === '.' ) {
+            $path = $this->pathfinder->get( $string );
+
+            if ( \file_exists( $path ) ) {
+                return Meta::getAssetId( $this->resolveAssetClass( $path ), $path );
+            }
+        }
+
+        dump( \get_defined_vars() );
+        return __METHOD__;
+    }
+
     final public function hasAssetMeta( string $key ) : bool
     {
-        return \file_exists( $this->manifestDirectory.'/'.$key.'.php' );
+        return \file_exists( 'dir.assets.meta/'.$key.'.php' );
     }
 
     /**
@@ -101,29 +155,32 @@ class AssetManager implements LazyService, LoggerAwareInterface
      *
      * @return ($nullable is true ? null|Meta : Meta)
      */
-    final public function getAssetMeta( string $key, bool $nullable = false ) : ?Meta
+    final public function getAssetMeta( string $key, bool $nullable = false ) : ?Asset
     {
-        $path = $this->manifestDirectory.'/'.$key.'.php';
-        if ( \file_exists( $path ) ) {
-            return require $path;
+        try {
+            return $this->manifest->getMeta( $key );
         }
-
-        if ( $nullable ) {
-            return null;
+        catch ( AssetException $exception ) {
+            if ( $nullable ) {
+                return null;
+            }
+            throw new AssetException(
+                message  : 'AbstractAsset is not registered.',
+                previous : $exception,
+            );
         }
-
-        throw new AssetException( 'Asset is not registered.' );
     }
 
     /**
-     * Sets a logger.
+     * @param string|Stringable|Type $from
      *
-     * @internal
-     *
-     * @param ?LoggerInterface $logger
+     * @return class-string<Asset>
      */
-    final public function setLogger( ?LoggerInterface $logger ) : void
+    final protected function resolveAssetClass( string|Type|Stringable $from ) : string
     {
-        $this->logger = $logger;
+        return match ( $from instanceof Type ? $from : Type::from( $from ) ) {
+            Type::STYLE => StyleAsset::class,
+            default     => throw new InvalidArgumentException( 'Class must be a subclass of RegisteredAsset.' ),
+        };
     }
 }

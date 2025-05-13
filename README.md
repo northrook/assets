@@ -1,4 +1,4 @@
-# Asset Manager
+# AbstractAsset Manager
 
 > [!IMPORTANT]
 > This package is still in development.

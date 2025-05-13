@@ -18,14 +18,17 @@
   "prefer-stable": true,
   "require": {
     "php": ">=8.3",
+    "ext-curl": "*",
     "northrook/core": "dev-main",
+    "northrook/core-symfony": "dev-main",
     "northrook/pathfinder": "dev-main",
     "northrook/minify": "dev-main",
     "northrook/cache": "dev-main",
     "northrook/view": "dev-main",
     "symfony/finder": "^7.2",
     "voku/portable-ascii": "^2.0",
-    "northrook/image": "dev-main"
+    "northrook/image": "dev-main",
+    "northrook/php-curl": "dev-main"
   },
   "require-dev": {
     "symfony/framework-bundle": "@stable",

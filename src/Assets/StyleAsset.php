@@ -4,45 +4,46 @@ declare(strict_types=1);
 
 namespace Core\Assets;
 
-use Core\Asset\Inlinable;
-use Core\AssetManager\AssetDefinition;
+use Core\Asset;
 use Core\View\Element;
+use Core\Asset\{Inlinable, Printable};
+use Stringable;
 
-/**
- * Extend this class to create a style asset.
- */
-class StyleAsset extends AssetDefinition
+class StyleAsset extends Asset implements Stringable
 {
-    use Inlinable;
+    use Printable, Inlinable;
 
-    public readonly string $source;
-
-    public function __invoke(
-        ?string $source = null,
-    ) : self {
-        $this->source = $source ?? '';
-        // $this->aspect      = Aspect::from( $this->source );
-        // $this->orientation = $this->aspect->orientation;
-        return $this;
+    protected function build() : void
+    {
+        $this->element->attributes->set( 'asset-id', $this->meta->id );
     }
 
-    public function getElement( mixed ...$attributes ) : Element
+    protected function render() : void
     {
-        return new Element( 'style', __METHOD__, ...$attributes );
+        if ( $this->meta->get( 'prefersInline', true ) ) {
+            $this->getInlineHtml();
+        }
+        else {
+            $this->getStyleHtml();
+        }
     }
 
-    public function getSourcePath() : string
+    public function getInlineHtml() : Element
     {
-        return __METHOD__;
+        $this->element->tag->set( 'style' );
+        $this->element->content( ['inline' => 'CSS'] );
+
+        return $this->element;
     }
 
-    public function getSourceUrl( bool $version = false ) : string
+    public function getStyleHtml() : Element
     {
-        return __METHOD__;
-    }
+        $this->element->tag->set( 'link' );
+        $this->element->attributes(
+            href : 'CSS',
+            rel  : 'stylesheet',
+        );
 
-    public function getVersion() : string
-    {
-        return __METHOD__;
+        return $this->element;
     }
 }

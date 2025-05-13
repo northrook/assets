@@ -1,60 +1,54 @@
 <?php
 
-declare(strict_types=1);
+/** @noinspection DuplicatedCode */
 
 namespace Core\Asset;
 
-use Core\AssetManager\{DetachedAsset, RegisteredAsset};
+use Core\Asset;
 use Core\Exception\AssetException;
-use Core\Interface\DataInterface;
 use InvalidArgumentException;
-use Northrook\Logger\Log;
+use Stringable;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\VarExporter\VarExporter;
-use function Support\{datetime, normalize_newline};
 use LogicException;
 use Throwable;
+use function Support\{datetime, normalize_newline, normalize_path};
 
-final class Meta implements DataInterface
+/**
+ * @internal
+ *
+ * @property-read class-string<Asset>      $class
+ * @property-read ?string                  $id
+ * @property-read Type                     $type
+ * @property-read Origin                   $origin
+ * @property-read string                   $url
+ * @property-read string                   $source
+ * @property-read array<array-key, string> $sources
+ * @property-read string                   $version
+ */
+final class Meta
 {
-    /** @var array<string,mixed> */
-    private array $data;
+    public const string               EXTENSION = 'meta';
 
-    private ?string $hash = null;
-
-    private false|string $filePath = false;
+    private const array PLACEHOLDER = [
+        'id'     => null,
+        'type'   => null,
+        'class'  => null,
+        'origin' => null,
+    ];
 
     protected bool $hasChanges = false;
 
     /**
-     * @param Type                                        $type
-     * @param class-string<DetachedAsset|RegisteredAsset> $class
-     * @param ?string                                     $name
-     * @param array<array-key,string>                     $sources
-     * @param mixed                                       ...$meta
+     * @param array<string, mixed> $meta
+     * @param ?string              $hash
+     * @param ?string              $filePath
      */
-    public function __construct(
-        public readonly Type $type,
-        string               $class,
-        ?string              $name,
-        array                $sources,
-        mixed             ...$meta,
-    ) {
-        $this->data = [
-            'assetId' => $meta['assetId'] ?? null,
-            'type'    => $type,
-            'class'   => $class,
-            'name'    => $name,
-            'sources' => $sources,
-        ];
-
-        unset( $meta['assetId'] );
-
-        foreach ( $meta as $key => $value ) {
-            $key              = $this->validateKey( $key );
-            $this->data[$key] = $value;
-        }
-    }
+    private function __construct(
+        protected array          $meta = Meta::PLACEHOLDER,
+        private readonly ?string $hash = null,
+        protected ?string        $filePath = null,
+    ) {}
 
     public function __destruct()
     {
@@ -64,117 +58,209 @@ final class Meta implements DataInterface
     }
 
     /**
-     * @param string                                      $filePath
-     * @param Type                                        $type
-     * @param class-string<DetachedAsset|RegisteredAsset> $class
-     * @param ?string                                     $name
-     * @param array<array-key,string>                     $sources
-     * @param mixed                                       ...$meta
+     * @param class-string<Asset> $class
+     * @param string|string[]     $source
+     */
+    public static function create(
+        string       $class,
+        array|string $source,
+    ) : self {
+        $meta = new self();
+
+        $meta
+            ->assetClass( $class )
+            ->addSource( $source )
+            ->validateSources();
+
+        return $meta->set( id : $meta->id() );
+    }
+
+    public function __get( string $name ) : mixed
+    {
+        return $this->meta[$name] ??= match ( $name ) {
+            'class'   => $this->meta['class'],
+            'id'      => $this->id(),
+            'type'    => $this->type(),
+            'origin'  => $this->origin(),
+            'url'     => $this->url(),
+            'version' => $this->version(),
+            default   => throw new InvalidArgumentException(
+                $this::class." has no meta '{$name}'.",
+            ),
+        };
+    }
+
+    /**
+     * @param class-string<Asset>             $asset
+     * @param array<array-key, string>|string $source
+     *
+     * @return string
+     */
+    final public static function getAssetId(
+        string       $asset,
+        array|string $source,
+    ) : string {
+        $data = [$asset];
+
+        foreach ( (array) $source as $key => $path ) {
+            $data[] = $key.$path;
+        }
+
+        return \hash( 'xxh64', \implode( '', $data ) );
+    }
+
+    public static function load( string $filePath ) : self
+    {
+        if ( ! \file_exists( $filePath ) ) {
+            throw new AssetException( "File '{$filePath}' does not exist." );
+        }
+
+        [$data, $hash] = require_once $filePath;
+        return new self( $data, $hash, $filePath );
+    }
+
+    /**
+     * @param string                         $filePath
+     * @param class-string<Asset>            $class
+     * @param array<array-key,string>|string $source
+     * @param ?string                        $id
      *
      * @return self
      */
-    public static function storageBacked(
-        string   $filePath,
-        Type     $type,
-        string   $class,
-        ?string  $name,
-        array    $sources,
-        mixed ...$meta,
+    public static function retrieve(
+        string       $filePath,
+        string       $class,
+        array|string $source,
+        ?string      $id = null,
     ) : self {
+        $fileName = \strrchr( \strtr( $filePath, '\\', '/' ), '/' )
+                ?: throw new InvalidArgumentException( "Invalid filePath '{$filePath}'" );
+
+        $ext = Meta::EXTENSION;
+        $id ??= Meta::getAssetId( $class, $source );
+
+        // If passed a directory, create Meta::id
+        if ( ! \str_ends_with( $fileName, ".{$ext}" ) ) {
+            $fileName = "{$id}.{$ext}";
+            $filePath = normalize_path( "{$filePath}/{$fileName}" );
+        }
+
+        \assert(
+            \str_ends_with( $filePath, $fileName ),
+            'FileName and Asset::id mismatch.',
+        );
+
         if ( \file_exists( $filePath ) ) {
             [$data, $hash] = require_once $filePath;
-            $meta          = new Meta( ...$data );
-            $meta->hash    = $hash;
+            $meta          = new self( $data, $hash, $filePath );
         }
         else {
-            $meta['assetId']  = \basename( $filePath, '.php' );
-            $meta             = new Meta( $type, $class, $name, $sources, ...$meta );
-            $meta->hasChanges = true;
+            $meta = Meta::create( $class, $source );
+
+            $meta->filePath = $filePath;
         }
-        $meta->filePath = $filePath;
+
         return $meta;
     }
 
-    public function getName() : string
-    {
-        return $this->data['name'] ?? throw new AssetException(
-            $this::class." for {$this->type->name} has no defined or generated name.",
-        );
-    }
-
     /**
-     * @param bool $nullable
-     * @param bool $throwOnEmpty
-     * @param bool $throwOnMultiple
-     *
-     * @return ($nullable is true ? null|string : string)
-     */
-    public function getSource(
-        bool $nullable = false,
-        bool $throwOnEmpty = true,
-        bool $throwOnMultiple = true,
-    ) : mixed {
-        \assert( $this->validateSources( $throwOnEmpty ) );
-
-        if ( $throwOnMultiple && \count( $this->data['sources'] ) > 1 ) {
-            throw new InvalidArgumentException(
-                $this::class." for {$this->type->name} has multiple sources. Single source expected.",
-            );
-        }
-
-        if ( $nullable ) {
-            return $this->data['sources'][0] ?? null;
-        }
-
-        return $this->data['sources'][0] ?? throw new AssetException(
-            $this::class." for {$this->type->name} has no source.",
-        );
-    }
-
-    /**
-     * @param bool $throwOnEmpty
-     *
-     * @return array<array-key,string>
-     */
-    public function getSources( bool $throwOnEmpty = true ) : array
-    {
-        \assert( $this->validateSources( $throwOnEmpty ) );
-        return $this->data['sources'];
-    }
-
-    public function getVersion() : int
-    {
-        $version = null;
-
-        foreach ( $this->getSources() as $source ) {
-            if ( \file_exists( $source ) && ( $modTime = \filemtime( $source ) ) ) {
-                $version = \max( $version, $modTime );
-            }
-        }
-
-        return $version ?? throw new AssetException(
-            $this::class." for {$this->type->name} has no version.",
-        );
-    }
-
-    public function getAssetId() : string
-    {
-        return $this->data['assetId'] ?? \hash( 'xxh64', $this->getName().\implode( '.', $this->getSources() ) );
-    }
-
-    /**
-     * @param array<array-key,string>|string $source
+     * @param mixed ...$meta
      *
      * @return $this
      */
-    public function addSource( string|array $source ) : self
+    public function add( mixed ...$meta ) : self
     {
-        \assert( $this->validateSources( false ) );
+        foreach ( $meta as $key => $value ) {
+            \assert( \is_string( $key ), $this::class.' keys must be strings.' );
+            $this->assign( $key, $value, false );
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param mixed ...$meta
+     *
+     * @return $this
+     */
+    public function set( mixed ...$meta ) : self
+    {
+        foreach ( $meta as $key => $value ) {
+            \assert( \is_string( $key ), $this::class.' keys must be strings.' );
+            $this->assign( $key, $value, true );
+        }
+        return $this;
+    }
+
+    /**
+     * @param string $key
+     * @param mixed  $value
+     * @param bool   $override
+     *
+     * @return $this
+     */
+    public function assign(
+        string $key,
+        mixed  $value,
+        bool   $override,
+    ) : self {
+        $key = $this->validateKey( $key );
+
+        if ( $override === false && \array_key_exists( $key, $this->meta ) && $this->meta[$key] === $value ) {
+            return $this;
+        }
+
+        if ( $key === 'sources' ) {
+            \assert(
+                \is_string( $value ) || \is_array( $value ) || $value instanceof Stringable,
+                $this::class.'[source] only accpets array or string, '.\gettype( $value )."' given.",
+            );
+            /** @var array<array-key,string|Stringable>|string|Stringable $value */
+            return $this->addSource( $value );
+        }
+
+        $this->meta[$key] = $value;
+        $this->hasChanges = true;
+
+        dump( \get_defined_vars() );
+
+        return $this;
+    }
+
+    /**
+     * @param array<array-key,string|Stringable>|string|Stringable $source
+     *
+     * @return $this
+     */
+    public function addSource( Stringable|string|array $source ) : self
+    {
+        if ( ! isset( $this->meta['sources'] ) ) {
+            $this->meta['sources'] = [];
+        }
+
+        \assert( \is_array( $this->meta['sources'] ) );
+
         $sources = \is_array( $source ) ? $source : [$source];
 
+        $origin = null;
+
         foreach ( $sources as $key => $path ) {
-            $this->data['sources'][$key] = $path;
+            \assert( \is_string( $path ) || $path instanceof Stringable );
+
+            $path = normalize_path( $path );
+
+            $from = Origin::from( $path );
+
+            $origin ??= $from;
+
+            if ( $origin !== $from ) {
+                $origin = Origin::MIXED;
+            }
+
+            $this->meta['sources'][$key] = $path;
         }
+
+        $this->meta['origin'] = $origin;
 
         $this->hasChanges = true;
         return $this;
@@ -191,7 +277,7 @@ final class Meta implements DataInterface
         string $key,
         mixed  $default,
     ) : mixed {
-        return $this->data[$key] ?? $default;
+        return $this->meta[$this->validateKey( $key )] ?? $default;
     }
 
     /**
@@ -199,72 +285,20 @@ final class Meta implements DataInterface
      */
     public function all() : array
     {
-        return $this->data;
+        return $this->meta;
     }
 
     public function has( string $key ) : bool
     {
-        return isset( $this->data[$key] );
-    }
-
-    /**
-     * @param int|string $value
-     *
-     * @return string
-     */
-    private function validateKey( int|string $value ) : string
-    {
-        if ( ! \is_string( $value ) ) {
-            throw new InvalidArgumentException( $this::class.' keys must be strings.' );
-        }
-
-        $value = \strtolower( $value );
-        if ( \in_array( $value, ['assetId', 'type', 'class'] ) ) {
-            throw new InvalidArgumentException( "The '{$value}' key is read-only." );
-        }
-
-        \assert(
-            \ctype_alnum( \str_replace( ['.', '-'], '', $value ) ),
-            $this::class." keys must only contain ASCII characters, underscores and dashes. '".$value."' provided.",
-        );
-
-        return $value;
-    }
-
-    /**
-     * @param string $key
-     * @param mixed  $value
-     *
-     * @return $this
-     */
-    public function set( string $key, mixed $value ) : self
-    {
-        $key = $this->validateKey( $key );
-
-        if ( \array_key_exists( $key, $this->data ) && $this->data[$key] === $value ) {
-            return $this;
-        }
-
-        $this->data[$key] = $value;
-        $this->hasChanges = true;
-        return $this;
-    }
-
-    public function hasChanges( true $set = null ) : bool
-    {
-        if ( $set ) {
-            $this->hasChanges = true;
-        }
-
-        return $this->hasChanges;
+        return isset( $this->meta[$key] );
     }
 
     public function export( bool $JSON = false ) : string
     {
         try {
             return $JSON
-                    ? \json_encode( $this->data, JSON_THROW_ON_ERROR )
-                    : normalize_newline( VarExporter::export( $this->data ) );
+                    ? \json_encode( $this->meta, JSON_THROW_ON_ERROR )
+                    : normalize_newline( VarExporter::export( $this->meta ) );
         }
         catch ( Throwable $e ) {
             throw new LogicException( $e->getMessage(), $e->getCode(), $e );
@@ -275,7 +309,7 @@ final class Meta implements DataInterface
         ?string $generator = null,
         bool    $force = false,
     ) : bool {
-        if ( $this->filePath === false ) {
+        if ( ! $this->filePath ) {
             throw new LogicException( 'Cannot commit '.$this::class.' without a file path.' );
         }
 
@@ -284,7 +318,7 @@ final class Meta implements DataInterface
         }
 
         // Do not attempt to commit anything if nothing has changed
-        if ( ! $force && ( empty( $this->data ) || $this->hasChanges === false ) ) {
+        if ( ! $force && ! $this->hasChanges ) {
             return false;
         }
 
@@ -292,7 +326,6 @@ final class Meta implements DataInterface
         $storageDataHash = \hash( algo : 'xxh3', data : $dataExport );
 
         if ( ! $force && $storageDataHash === ( $this->hash ?? null ) ) {
-            Log::info( $this->getName().': Matches hashes, no changes to commit.' );
             return false;
         }
 
@@ -300,7 +333,7 @@ final class Meta implements DataInterface
 
         $timestamp          = $dateTime->getTimestamp();
         $formattedTimestamp = $dateTime->format( 'Y-m-d H:i:s e' );
-        $generator ??= $this::class;
+        $generator ??= $this->class;
 
         $dataExport = (string) \preg_replace_callback(
             '#^ *#m',
@@ -320,7 +353,7 @@ final class Meta implements DataInterface
             
             /*------------------------------------------------------%{$timestamp}%-
             
-               Name      : {$this->getName()}
+               Asset ID  : {$this->id()}
                Generated : {$formattedTimestamp}
                Generator : {$generator}
             
@@ -344,8 +377,118 @@ final class Meta implements DataInterface
         return true;
     }
 
+    protected function id() : string
+    {
+        return $this->meta['id'] ??= $this::getAssetId(
+            $this->class,
+            $this->sources,
+        );
+    }
+
+    protected function type() : Type
+    {
+        return $this->meta['type'] ??= Type::from( $this->url() );
+    }
+
+    protected function origin() : Origin
+    {
+        \assert( $this->meta['origin'] instanceof Origin );
+        return $this->meta['origin'];
+    }
+
     /**
-     * @phpstan-assert-if-true array{sources:array} $this->data
+     * Get the public path for this asset.
+     *
+     * If no {@see meta}[path] key exists, one will be derived from {@see sources}
+     *
+     * @return string
+     */
+    protected function path() : string
+    {
+        // ~{dir.public}/assets/{type}/{basename}.{ext}
+        return __METHOD__;
+    }
+
+    protected function url() : string
+    {
+        return __METHOD__;
+    }
+
+    protected function version() : string
+    {
+        return (string) \time();
+    }
+
+    /**
+     * @param bool $nullable
+     * @param bool $throwOnEmpty
+     * @param bool $throwOnMultiple
+     *
+     * @return ($nullable is true ? null|string : string)
+     */
+    public function source(
+        bool $nullable = false,
+        bool $throwOnEmpty = true,
+        bool $throwOnMultiple = true,
+    ) : ?string {
+        \assert( $this->validateSources( $throwOnEmpty ) );
+
+        if ( $throwOnMultiple && \count( $this->meta['sources'] ) > 1 ) {
+            throw new InvalidArgumentException(
+                $this::class." for {$this->type->name} has multiple sources. Single source expected.",
+            );
+        }
+
+        if ( $nullable ) {
+            return \end( $this->sources ) ?: null;
+        }
+
+        return \end( $this->sources )
+                ?: throw new AssetException(
+                    $this::class." for {$this->type->name} has no source.",
+                );
+    }
+
+    /**
+     * @param bool $throwOnEmpty
+     *
+     * @return array<array-key,string>
+     */
+    public function sources( bool $throwOnEmpty = true ) : array
+    {
+        \assert( $this->validateSources( $throwOnEmpty ) );
+        return $this->meta['sources'];
+    }
+
+    private function assetClass( string $class ) : self
+    {
+        \assert( \class_exists( $class ) && \is_subclass_of( $class, Asset::class ) );
+        $this->meta['class'] = $class;
+        return $this;
+    }
+
+    /**
+     * @param string $value
+     *
+     * @return string
+     */
+    private function validateKey( string $value ) : string
+    {
+        $value = \strtolower( $value );
+        if ( \in_array( $value, ['assetId', 'type', 'class', 'name', 'source', 'origin', 'registration'] ) ) {
+            throw new InvalidArgumentException( "The '{$value}' key is read-only." );
+        }
+
+        \assert(
+            \ctype_alnum( \str_replace( ['.', '-'], '', $value ) ),
+            $this::class." keys must only contain ASCII characters, underscores and dashes. '".$value."' provided.",
+        );
+
+        return $value;
+    }
+
+    /**
+     * @phpstan-assert-if-true array{source:array<array-key,string>} $this->meta
      *
      * @param bool $throwOnEmpty
      *
@@ -353,23 +496,23 @@ final class Meta implements DataInterface
      */
     private function validateSources( bool $throwOnEmpty = true ) : bool
     {
-        $class = $this::class;
-        $asset = $this->type->name;
-
-        if ( ! \array_key_exists( 'sources', $this->data ) ) {
-            throw new AssetException( "{$class} for {$asset} has no source." );
+        if ( $throwOnEmpty && empty( $this->meta['sources'] ) ) {
+            throw new AssetException( "Meta for {$this->class} has no source." );
         }
 
-        if ( ! \is_array( $this->data['sources'] ) ) {
-            $type = \gettype( $this->data['sources'] );
-
-            throw new AssetException(
-                "{$class} for {$asset} has invalid source value. 'Array' expected, '{$type}' given.",
-            );
+        if ( ! isset( $this->meta['sources'] ) ) {
+            $this->meta['sources'] = [];
         }
 
-        if ( $throwOnEmpty && empty( $this->data['sources'] ) ) {
-            throw new AssetException( "{$class} for {$asset} has no source." );
+        \assert( \is_array( $this->meta['sources'] ) );
+
+        foreach ( $this->meta['sources'] as $source ) {
+            $type = Type::from( $source );
+            $this->meta['type'] ??= $type;
+
+            if ( $this->type !== $type ) {
+                throw new AssetException();
+            }
         }
 
         return true;

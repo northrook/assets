@@ -140,10 +140,13 @@ enum Type
 
     /**
      * @return lowercase-string
+     * @param  bool             $pluralize
      */
-    public function name() : string
+    public function name( bool $pluralize = false ) : string
     {
-        return \strtolower( $this->name );
+        $name = \strtolower( $this->name );
+
+        return $pluralize ? \rtrim( $name, 's' ).'s' : $name;
     }
 
     /**
