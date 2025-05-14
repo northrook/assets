@@ -4,197 +4,105 @@ declare(strict_types=1);
 
 namespace Core\AssetManager;
 
-use Attribute;
-use Core\Asset\Type;
-use Core\AssetManager;
-use Core\Exception\{AssetException, TypeException};
-use Core\Symfony\DependencyInjection\Autodiscover;
-use InvalidArgumentException;
-use LogicException;
-use Override;
-use Stringable;
-use function Support\{is_url, slug, normalize_path, normalize_url};
-use const Support\AUTO;
+// : The Asset should likely create the Meta
+// : That way both Registered and Detached generate from the same place
+// ? Storage Backed Meta must be optional
+// . Use in-memory unless called by the AssetManager or manually at runtime
+
+// . AssetID will for registered generated from class+name, else class+name+sources
+// . SourceResolver URL will use ~ as a query divider - see current ImageAsset for implementation
+
+use Cache\CachePoolTrait;
+use Core\Interface\AssetInterface;
+use Core\Pathfinder;
+use Core\Symfony\DependencyInjection\SettingsAccessor;
+use Core\Compiler\{Hook};
+use Core\Profiler\Interface\Profilable;
+use Core\Profiler\ProfilerTrait;
+use Core\Interface\{LogHandler, Loggable};
+use Core\AssetManager\Asset\{Meta};
+use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Contracts\Service\Attribute\Required;
+use function Support\{normalize_url};
+use const Time\HOUR_4;
+
+// : All classes extending the Asset class will be registered as Action/Service
+// . Only classes annotated with #[Asset] will be configurable at compile time
 
 /**
- * Reference this asset using:
- * - {@see Asset::$name}
- * - {@see Asset::$className}
- * - {@see Asset::$ppublicPath}
- *
- * @extends Autodiscover<\Core\Asset> registered as a {@see service}.
- * @used-by \Core\AssetManager
  */
-#[Attribute( Attribute::TARGET_CLASS )]
-final class Asset extends Autodiscover implements Stringable
+abstract class Asset implements AssetInterface, Loggable, Profilable
 {
-    /** @var non-empty-string */
-    public readonly string $name;
+    use LogHandler, ProfilerTrait, CachePoolTrait, SettingsAccessor;
 
-    /** @var non-empty-string */
-    public readonly string $publicPath;
+    protected readonly Pathfinder $pathfinder;
 
-    /** @var array<array-key, string> */
-    public readonly array $source;
+    /** @var ?string */
+    protected ?string $publicPath = null;
 
-    public readonly Type $type;
+    public readonly Meta $meta;
+
+    abstract protected function build() : void;
 
     /**
-     * `$source` Provide one or more source paths.
-     * - Relative to `./assets/`:  `/style/stylesheet.css`
-     * - Glob patterns: `/style/core/*.css`, `/image/*`
-     * - Full, static paths allowed
-     * - Accepts remote sources
+     * @param Meta                        $meta
+     * @param Pathfinder                  $pathfinder
+     * @param null|CacheItemPoolInterface $cache
      *
-     * @param array<array-key,string>|string $source
-     * @param ?string                        $publicPath
-     * @param ?Type                          $type       [AUTO] from `source`
-     * @param ?string                        $name       [AUTO] from `className`
-     * @param ?string                        $serviceId  [AUTO] from `$name`
+     * @return $this
      */
-    public function __construct(
-        string|array $source,
-        ?string      $publicPath = AUTO,
-        ?Type        $type = AUTO,
-        ?string      $name = AUTO,
-        ?string      $serviceId = AUTO,
-    ) {
-        if ( $name !== AUTO ) {
-            $this->name = $this->resolveName( $name );
+    #[Required]
+    final public function setDependencies(
+        Meta                    $meta,
+        Pathfinder              $pathfinder,
+        ?CacheItemPoolInterface $cache = null,
+    ) : self {
+        $this->meta       = $meta;
+        $this->pathfinder = $pathfinder;
+
+        $this->assignCacheAdapter(
+            adapter    : $cache,
+            prefix     : 'manifest',
+            defer      : $this->getSetting( 'asset.cache.defer', true ),
+            expiration : $this->getSetting( 'asset.cache.expiration', HOUR_4 ),
+        );
+
+        foreach (
+            Hook::resolve( $this::class ) as [$method, $arguments]
+        ) {
+            $this->{$method}( ...$arguments );
         }
 
-        if ( $publicPath !== AUTO ) {
-            $this->publicPath = $this->resolvePublicPath( $publicPath );
-        }
+        $this->build();
 
-        [$this->source, $this->type] = $this->resolveSources( $source, $type );
+        return $this;
+    }
 
-        parent::__construct(
-            serviceId : $serviceId,
-            tag       : [
-                AssetManager::LOCATOR_ID,
-                'monolog.logger' => ['channel' => 'assets'],
-            ],
-            lazy      : false,
-            public    : false,
-            autowire  : true,
+    /**
+     * @return array<array-key,SourceResolver>
+     */
+    final public function getSources() : array
+    {
+        return \array_map(
+            fn( $source ) => new SourceResolver( $source, $this->pathfinder->get( 'dir.assets' ) ),
+            $this->meta->sources(),
         );
     }
 
-    public function __toString() : string
+    public function getPath() : string
     {
-        return $this->name;
+        return __METHOD__;
     }
 
-    #[Override]
-    protected function serviceId() : string
-    {
-        if ( ! isset( $this->className ) ) {
-            $message = "Could not generate RegisteredAsset->name: RegisteredAsset->className is not defined.\n";
-            $message .= 'Call RegisteredAsset->registerService( .. ) when registering the asset.';
-            throw new LogicException( $message );
-        }
-
-        return slug( $this->className );
+    public function getUrl(
+        bool $relative = false,
+        bool $version = false,
+    ) : string {
+        return normalize_url( $this->meta->url );
     }
 
-    #[Override]
-    protected function register() : void
+    final public function getVersion() : string
     {
-        if ( ! isset( $this->name ) ) {
-            $namespaced = \explode( '\\', $this->className );
-            $className  = \strtolower( \end( $namespaced ) );
-
-            if ( \str_ends_with( $className, 'asset' ) ) {
-                $className = \substr( $className, 0, -\strlen( 'asset' ) );
-            }
-            $this->name = $this->resolveName( $className );
-        }
-
-        if ( ! isset( $this->publicPath ) ) {
-            $extension = $this->type->extensions();
-
-            if ( empty( $extension ) || \count( $extension ) !== 1 ) {
-                throw new LogicException(
-                    "Unable to autogenerate `publicPath` {$this->className}."
-                        .'The extension could not be derived.',
-                );
-            }
-
-            $type = $this->type->name();
-
-            $this->publicPath = $this->resolvePublicPath(
-                "/{$type}/{$this->name}.{$extension[0]}",
-            );
-        }
-    }
-
-    /**
-     * @param string $name
-     *
-     * @return non-empty-string
-     */
-    private function resolveName( string $name ) : string
-    {
-        return \trim( $name, " \n\r\t\v\0." )
-                ?: throw new InvalidArgumentException( 'AbstractAsset name cannot be empty.' );
-    }
-
-    /**
-     * @param string|string[] $sources
-     * @param ?Type           $type
-     *
-     * @return array<array-key, string>
-     */
-    private function resolveSources(
-        string|array $sources,
-        ?Type        $type = AUTO,
-    ) : array {
-        if ( ! $sources ) {
-            throw new AssetException( 'Could not resolve asset sources.' );
-        }
-        $sources = \is_array( $sources ) ? $sources : [$sources];
-
-        foreach ( $sources as $key => $value ) {
-            if ( ! \is_string( $value ) ) {
-                throw new TypeException( 'string', $value );
-            }
-
-            $source = normalize_path( $value, true );
-            $type ??= Type::from( $source );
-
-            $sources[$key] = $source;
-        }
-
-        return [$sources, $type];
-    }
-
-    /**
-     * @param string $publicPath
-     *
-     * @return non-empty-string
-     */
-    private function resolvePublicPath( string $publicPath ) : string
-    {
-        if ( empty( $publicPath ) ) {
-            throw new InvalidArgumentException(
-                $this::class.'$publicPath cannot be empty.',
-            );
-        }
-
-        if ( $publicPath[0] !== '/' ) {
-            throw new InvalidArgumentException(
-                $this::class."{$publicPath} must be relative to '/'.",
-            );
-        }
-
-        if ( ! is_url( $publicPath ) ) {
-            throw new InvalidArgumentException( 'Public path must be URL.' );
-        }
-
-        return normalize_url( $publicPath )
-                ?: throw new InvalidArgumentException(
-                    $this::class.'$publicPath cannot be empty.',
-                );
+        return $this->meta->version;
     }
 }

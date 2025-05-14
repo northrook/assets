@@ -1,8 +1,8 @@
 <?php
 
-namespace Core\Asset;
+namespace Core\AssetManager\Asset;
 
-use Core\Asset;
+use Core\AssetManager\Asset;
 use Core\Compiler\{Hook};
 use Core\View\Element;
 use Stringable;

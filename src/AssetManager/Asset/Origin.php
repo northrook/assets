@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\Asset;
+namespace Core\AssetManager\Asset;
 
 use function Support\is_url;
 

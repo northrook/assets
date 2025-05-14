@@ -2,9 +2,11 @@
 
 /** @noinspection DuplicatedCode */
 
-namespace Core\Asset;
+namespace Core\AssetManager\Asset;
 
-use Core\Asset;
+use Core\AssetManager\Asset;
+use Core\AssetManager\Asset\Origin;
+use Core\AssetManager\Asset\Type;
 use Core\Exception\AssetException;
 use InvalidArgumentException;
 use Stringable;
@@ -91,8 +93,8 @@ final class Meta
     }
 
     /**
-     * @param class-string<Asset>             $asset
-     * @param array<array-key, string>|string $source
+     * @param class-string<\Core\AssetManager\Asset>  $asset
+     * @param array<array-key, string>|string         $source
      *
      * @return string
      */

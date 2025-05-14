@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Core\Asset;
+namespace Core\AssetManager\Asset;
 
 use InvalidArgumentException;
 use ReflectionEnum;

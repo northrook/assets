@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Core\Asset;
+namespace Core\AssetManager\Asset;
 
-use Core\Asset;
+use Core\AssetManager\Asset;
 use Core\Compiler\Hook;
 
 /**

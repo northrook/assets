@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Core\AssetManager;
 
-use Core\Asset;
-use Core\Asset\Meta;
+use Core\AssetManager\Asset\Meta;
 use Core\Interface\DataInterface;
 use InvalidArgumentException;
 use LogicException;
@@ -49,7 +48,7 @@ final class AssetManifest implements DataInterface, Countable
     }
 
     /**
-     * @param class-string<Asset>|string $asset
+     * @param class-string<Compiler\Asset>|string $asset
      *
      * @return Meta
      */
@@ -59,7 +58,7 @@ final class AssetManifest implements DataInterface, Countable
     }
 
     /**
-     * @param class-string<Asset>|string $asset
+     * @param class-string<Compiler\Asset>|string $asset
      *
      * @return string
      */

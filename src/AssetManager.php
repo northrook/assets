@@ -8,10 +8,10 @@ namespace Core;
 
 use Cache\CachePoolTrait;
 use Core\Assets\StyleAsset;
-use Core\Asset\{Meta, Type};
-use Core\AssetManager\{AssetInterface, AssetManifest};
+use Core\AssetManager\Asset\{Meta};
+use Core\AssetManager\{Asset, Asset\Type, AssetManifest};
 use Core\Exception\AssetException;
-use Core\Interface\{LazyService, LogHandler, Loggable};
+use Core\Interface\{AssetInterface, LazyService, LogHandler, Loggable};
 use Core\View\Element;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -59,7 +59,7 @@ class AssetManager implements LazyService, Loggable
      *
      * @param string $asset
      *
-     * @return AssetInterface
+     * @return Asset
      */
     final public function getAsset( string $asset ) : AssetInterface
     {

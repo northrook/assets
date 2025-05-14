@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\AssetManager;
 
-use Core\Asset\Type;
+use Core\AssetManager\Asset\Type;
 use Core\Interface\DataInterface;
 use SplFileObject;
 use Stringable;

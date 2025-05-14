@@ -4,14 +4,26 @@ declare(strict_types=1);
 
 namespace Core\Assets;
 
-use Core\Asset;
+use Core\AssetManager\Asset;
+use Core\AssetManager\Asset\Inlinable;
+use Core\AssetManager\Asset\Printable;
 use Core\View\Element;
-use Core\Asset\{Inlinable, Printable};
+use Core\AssetManager\Asset\{Minifier};
+use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
+use Support\StylesheetMinifier;
 
 class StyleAsset extends Asset implements Stringable
 {
-    use Printable, Inlinable;
+    use Printable, Inlinable, Minifier;
+
+    public function getMinifier() : StylesheetMinifier
+    {
+        return $this->minifier ??= new StylesheetMinifier(
+            cachePool : $this->cache instanceof CacheItemPoolInterface ? $this->cache : null,
+            logger    : $this->logger,
+        );
+    }
 
     protected function build() : void
     {

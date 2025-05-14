@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Core\AssetManager;
+namespace Core\AssetManager\Compiler;
 
-use Core\AssetManager;
+use Core\{AssetManager\Asset, AssetManager, AssetManager\AssetManifest};
+use Core\AssetManager\Compiler\Asset as AssetAttribute;
 use Core\Symfony\Console\ListReport;
 use Core\Symfony\DependencyInjection\CompilerPass;
 use ReflectionClass;
@@ -40,7 +41,7 @@ final class RegisterAssetsPass extends CompilerPass
             //
             $registeredServices->item( $serviceId );
 
-            $serviceDefinition = $this->getDefinition( $serviceId, true );
+            $serviceDefinition = $this->getDefinition( $serviceId, nullable : true );
             if ( $serviceDefinition === null ) {
                 $registeredServices->remove(
                     $this::class." missing required '{$serviceId}' definition.",
@@ -62,6 +63,8 @@ final class RegisterAssetsPass extends CompilerPass
 
             $serviceLocatorArguments[$serviceId] = new Reference( $serviceId );
         }
+
+        dump( $serviceLocatorArguments );
 
         $assetLocator->setArguments( [$serviceLocatorArguments] );
 
@@ -93,9 +96,9 @@ final class RegisterAssetsPass extends CompilerPass
     /**
      * @param Definition $definition
      *
-     * @return null|Asset<\Core\Asset>
+     * @return null|AssetAttribute<Asset>
      */
-    private function definitionViewComponentAttribute( Definition $definition ) : ?Asset
+    private function definitionViewComponentAttribute( Definition $definition ) : ?AssetAttribute
     {
         $className = $definition->getClass() ?: 'invalid';
 
@@ -115,13 +118,15 @@ final class RegisterAssetsPass extends CompilerPass
 
         $reflectionClass = new ReflectionClass( $className );
 
-        $viewComponentAttributes = $reflectionClass->getAttributes( Asset::class );
+        $viewComponentAttributes = $reflectionClass->getAttributes( AssetAttribute::class );
 
-        /** @var Asset<\Core\Asset> $registeredAsset */
-        $registeredAsset = $viewComponentAttributes[0]->newInstance();
+        $registeredAsset = $viewComponentAttributes[0];
+        /** @var AssetAttribute<Asset> $assetAttribute */
+        $assetAttribute = $registeredAsset->newInstance();
         /** @noinspection PhpInternalEntityUsedInspection */
-        $registeredAsset->registerService( $className );
+        $assetAttribute->registerService( $className );
 
+        dump( $registeredAsset );
         return $registeredAsset;
     }
 

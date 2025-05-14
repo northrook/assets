@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Assets;
 
-use Core\Asset;
+use Core\AssetManager\Asset;
 
 class ImageAsset extends Asset
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Core\AssetManager;
+namespace Core\Interface;
 
 interface AssetInterface
 {
