@@ -14,5 +14,14 @@ trait Minifier
 {
     private readonly Minify $minifier;
 
+    protected ?string $minified = null;
+
     abstract protected function getMinifier() : Minify;
+
+    abstract protected function minify() : self;
+
+    final public function getMinified() : ?string
+    {
+        return $this->minify()->minified;
+    }
 }

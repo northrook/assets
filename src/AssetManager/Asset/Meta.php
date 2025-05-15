@@ -5,8 +5,6 @@
 namespace Core\AssetManager\Asset;
 
 use Core\AssetManager\Asset;
-use Core\AssetManager\Asset\Origin;
-use Core\AssetManager\Asset\Type;
 use Core\Exception\AssetException;
 use InvalidArgumentException;
 use Stringable;
@@ -93,8 +91,8 @@ final class Meta
     }
 
     /**
-     * @param class-string<\Core\AssetManager\Asset>  $asset
-     * @param array<array-key, string>|string         $source
+     * @param class-string<Asset>             $asset
+     * @param array<array-key, string>|string $source
      *
      * @return string
      */
@@ -251,7 +249,7 @@ final class Meta
 
             $path = normalize_path( $path );
 
-            $from = Origin::from( $path );
+            $from = Origin::fromPath( $path );
 
             $origin ??= $from;
 

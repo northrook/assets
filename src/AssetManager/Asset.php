@@ -22,7 +22,6 @@ use Core\Profiler\ProfilerTrait;
 use Core\Interface\{LogHandler, Loggable};
 use Core\AssetManager\Asset\{Meta};
 use Psr\Cache\CacheItemPoolInterface;
-use Symfony\Contracts\Service\Attribute\Required;
 use function Support\{normalize_url};
 use const Time\HOUR_4;
 
@@ -42,8 +41,6 @@ abstract class Asset implements AssetInterface, Loggable, Profilable
 
     public readonly Meta $meta;
 
-    abstract protected function build() : void;
-
     /**
      * @param Meta                        $meta
      * @param Pathfinder                  $pathfinder
@@ -51,7 +48,6 @@ abstract class Asset implements AssetInterface, Loggable, Profilable
      *
      * @return $this
      */
-    #[Required]
     final public function setDependencies(
         Meta                    $meta,
         Pathfinder              $pathfinder,
@@ -67,13 +63,11 @@ abstract class Asset implements AssetInterface, Loggable, Profilable
             expiration : $this->getSetting( 'asset.cache.expiration', HOUR_4 ),
         );
 
-        foreach (
-            Hook::resolve( $this::class ) as [$method, $arguments]
-        ) {
-            $this->{$method}( ...$arguments );
-        }
-
-        $this->build();
+        Hook::fire(
+            $this,
+            Hook\SetDependencies::class,
+            Hook\OnBuild::class,
+        );
 
         return $this;
     }

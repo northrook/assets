@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Core\AssetManager\Compiler;
+namespace Core\AssetManager\Config;
 
 use Core\{AssetManager\Asset, AssetManager, AssetManager\AssetManifest};
-use Core\AssetManager\Compiler\Asset as AssetAttribute;
+use Core\AssetManager\Config\Asset as AssetAttribute;
 use Core\Symfony\Console\ListReport;
 use Core\Symfony\DependencyInjection\CompilerPass;
-use ReflectionClass;
+use Support\Reflect;
 use Symfony\Component\Config\Loader\ParamConfigurator;
 use Symfony\Component\DependencyInjection\{ContainerBuilder, Definition, Parameter, Reference};
 use Symfony\Component\DependencyInjection\Loader\Configurator\ReferenceConfigurator;
@@ -116,18 +116,12 @@ final class RegisterAssetsPass extends CompilerPass
             return null;
         }
 
-        $reflectionClass = new ReflectionClass( $className );
+        $attribute = Reflect::getAttribute(
+            $className,
+            AssetAttribute::class,
+        );
 
-        $viewComponentAttributes = $reflectionClass->getAttributes( AssetAttribute::class );
-
-        $registeredAsset = $viewComponentAttributes[0];
-        /** @var AssetAttribute<Asset> $assetAttribute */
-        $assetAttribute = $registeredAsset->newInstance();
-        /** @noinspection PhpInternalEntityUsedInspection */
-        $assetAttribute->registerService( $className );
-
-        dump( $registeredAsset );
-        return $registeredAsset;
+        return $attribute?->configure( $className );
     }
 
     /**

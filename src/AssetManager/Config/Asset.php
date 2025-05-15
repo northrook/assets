@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Core\AssetManager\Compiler;
+namespace Core\AssetManager\Config;
 
 use Attribute;
 use Core\AssetManager\Asset\Type;
@@ -13,7 +13,7 @@ use InvalidArgumentException;
 use LogicException;
 use Override;
 use Stringable;
-use function Support\{is_url, slug, normalize_path, normalize_url};
+use function Support\{normalize_path, normalize_url};
 use const Support\AUTO;
 
 /**
@@ -39,6 +39,8 @@ final class Asset extends Autodiscover implements Stringable
 
     public readonly Type $type;
 
+    public string $baseDirectory = 'assets';
+
     /**
      * `$source` Provide one or more source paths.
      * - Relative to `./assets/`:  `/style/stylesheet.css`
@@ -60,7 +62,7 @@ final class Asset extends Autodiscover implements Stringable
         ?string      $serviceId = AUTO,
     ) {
         if ( $name !== AUTO ) {
-            $this->name = $this->resolveName( $name );
+            $this->name = $this->validateName( $name );
         }
 
         if ( $publicPath !== AUTO ) {
@@ -95,37 +97,68 @@ final class Asset extends Autodiscover implements Stringable
             throw new LogicException( $message );
         }
 
-        return slug( $this->className );
+        $serviceId = \explode( '\\', \strtolower( $this->className ) );
+
+        $typeName  = $this->type->name();
+        $className = \array_pop( $serviceId );
+
+        if ( \end( $serviceId ) !== $typeName ) {
+            $serviceId[] = $typeName;
+        }
+
+        if ( \str_ends_with( $className, $typeName ) ) {
+            $className = \substr( $className, 0, -\strlen( $typeName ) );
+        }
+
+        $serviceId[] = $className;
+
+        return \implode( '.', $serviceId );
     }
 
     #[Override]
     protected function register() : void
     {
         if ( ! isset( $this->name ) ) {
-            $namespaced = \explode( '\\', $this->className );
-            $className  = \strtolower( \end( $namespaced ) );
+            // $namespaced = \explode( '\\', $this->className );
+            // $className  = \strtolower( \end( $namespaced ) );
+            // $typeName   = $this->type->name();
+            //
+            // if ( \str_ends_with( $className, $typeName ) ) {
+            //     $className = \substr( $className, 0, -\strlen( $typeName ) );
+            // }
 
-            if ( \str_ends_with( $className, 'asset' ) ) {
-                $className = \substr( $className, 0, -\strlen( 'asset' ) );
-            }
-            $this->name = $this->resolveName( $className );
+            $this->name = $this->validateName( $this->serviceId );
         }
 
         if ( ! isset( $this->publicPath ) ) {
             $extension = $this->type->extensions();
 
-            if ( empty( $extension ) || \count( $extension ) !== 1 ) {
+            if ( \count( $extension ) === 1 ) {
+                $extension = $extension[0];
+            }
+            else {
+                $extension = null;
+
+                foreach ( $this->source as $source ) {
+                    $soureExtension = \pathinfo( $source, PATHINFO_EXTENSION );
+                    if ( $soureExtension ) {
+                        $extension = $soureExtension;
+
+                        break;
+                    }
+                }
+            }
+
+            if ( ! $extension ) {
                 throw new LogicException(
                     "Unable to autogenerate `publicPath` {$this->className}."
                         .'The extension could not be derived.',
                 );
             }
 
-            $type = $this->type->name();
+            $path = "/{$this->baseDirectory}/{$this->type->name()}/{$this->name}.{$extension}";
 
-            $this->publicPath = $this->resolvePublicPath(
-                "/{$type}/{$this->name}.{$extension[0]}",
-            );
+            $this->publicPath = $this->resolvePublicPath( $path );
         }
     }
 
@@ -134,7 +167,7 @@ final class Asset extends Autodiscover implements Stringable
      *
      * @return non-empty-string
      */
-    private function resolveName( string $name ) : string
+    private function validateName( string $name ) : string
     {
         return \trim( $name, " \n\r\t\v\0." )
                 ?: throw new InvalidArgumentException( 'AbstractAsset name cannot be empty.' );
@@ -186,10 +219,6 @@ final class Asset extends Autodiscover implements Stringable
             throw new InvalidArgumentException(
                 $this::class."{$publicPath} must be relative to '/'.",
             );
-        }
-
-        if ( ! is_url( $publicPath ) ) {
-            throw new InvalidArgumentException( 'Public path must be URL.' );
         }
 
         return normalize_url( $publicPath )

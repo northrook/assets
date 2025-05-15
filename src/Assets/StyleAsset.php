@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Core\Assets;
 
 use Core\AssetManager\Asset;
-use Core\AssetManager\Asset\Inlinable;
-use Core\AssetManager\Asset\Printable;
+use Core\AssetManager\Asset\{Inlinable, Printable};
 use Core\View\Element;
 use Core\AssetManager\Asset\{Minifier};
 use Psr\Cache\CacheItemPoolInterface;
@@ -17,7 +16,7 @@ class StyleAsset extends Asset implements Stringable
 {
     use Printable, Inlinable, Minifier;
 
-    public function getMinifier() : StylesheetMinifier
+    final protected function getMinifier() : StylesheetMinifier
     {
         return $this->minifier ??= new StylesheetMinifier(
             cachePool : $this->cache instanceof CacheItemPoolInterface ? $this->cache : null,
@@ -25,13 +24,39 @@ class StyleAsset extends Asset implements Stringable
         );
     }
 
-    protected function build() : void
+    final protected function minify() : self
     {
-        $this->element->attributes->set( 'asset-id', $this->meta->id );
+        if ( $this->minified ) {
+            return $this;
+        }
+
+        foreach ( $this->meta->sources() as $source ) {
+            dump( $source );
+            // $isPath = is_path( $source );
+            // if ( $isPath ) {
+            //     if ( \glob( $source ) ) {
+            //         $this->getMinifier()->setSource( ...\glob( $source ) ?: [] );
+            //     }
+            //     elseif ( \file_exists( $source ) ) {
+            //         $this->getMinifier()->setSource( $source );
+            //     }
+            // }
+            // else {
+            //     $this->getMinifier()->setSource( $source );
+            // }
+        }
+
+        $this->getMinifier()->minify( $this->meta->id );
+
+        $this->minified = $this->getMinifier()->__toString();
+
+        return $this;
     }
 
     protected function render() : void
     {
+        $this->element->attributes->set( 'asset-id', $this->meta->id );
+
         if ( $this->meta->get( 'prefersInline', true ) ) {
             $this->getInlineHtml();
         }

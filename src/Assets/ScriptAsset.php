@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Core\Assets;
 
 use Core\AssetManager\Asset;
-use Core\AssetManager\Asset\Inlinable;
-use Core\AssetManager\Asset\Minifier;
+use Core\AssetManager\Asset\{Inlinable, Minifier};
 use Psr\Cache\CacheItemPoolInterface;
 use Support\{JavaScriptMinifier};
 use Core\AssetManager\Asset\{Printable};
@@ -23,9 +22,13 @@ class ScriptAsset extends Asset
         );
     }
 
-    protected function build() : void
+    final protected function minify() : self
     {
-        // TODO: Implement build() method.
+        if ( $this->minified ) {
+            return $this;
+        }
+
+        return $this;
     }
 
     protected function render() : void

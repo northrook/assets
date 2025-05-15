@@ -48,7 +48,7 @@ final class AssetManifest implements DataInterface, Countable
     }
 
     /**
-     * @param class-string<Compiler\Asset>|string $asset
+     * @param class-string<Config\Asset>|string  $asset
      *
      * @return Meta
      */
@@ -58,7 +58,7 @@ final class AssetManifest implements DataInterface, Countable
     }
 
     /**
-     * @param class-string<Compiler\Asset>|string $asset
+     * @param class-string<Config\Asset>|string  $asset
      *
      * @return string
      */
