@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\AssetManager\Config;
 
-use Core\{AssetManager\Asset, AssetManager};
+use Core\{AssetManager\AbstractAsset, AssetManager\Asset, AssetManager};
 use Core\AssetManager\Config\Asset as AssetAttribute;
 use Core\Symfony\Console\ListReport;
 use Core\Symfony\DependencyInjection\CompilerPass;
@@ -14,6 +14,32 @@ use Symfony\Component\DependencyInjection\{ContainerBuilder, Definition, Referen
 final class RegisterAssetsPass extends CompilerPass
 {
     public function compile( ContainerBuilder $container ) : void
+    {
+        $this
+            ->invokableServices()
+            ->registerAssetServices();
+    }
+
+    protected function invokableServices() : self
+    {
+        $registeredServices = new ListReport( __METHOD__ );
+
+        foreach ( $this->getDeclaredClasses( AbstractAsset::class ) as $class ) {
+            $registeredServices->item( $class );
+            // $this->container->getDefinition( $class )
+            //     ->addMethodCall(
+            //         'setServiceLocator',
+            //         [$this->serviceLocator],
+            //     );
+
+            dump( $class );
+        }
+
+        $registeredServices->output();
+        return $this;
+    }
+
+    protected function registerAssetServices() : void
     {
         $report = new ListReport( __METHOD__ );
 

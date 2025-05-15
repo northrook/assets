@@ -21,9 +21,9 @@ final class AssetManifestPass extends CompilerPass
     {
         // $registeredServices = new ListReport( __METHOD__ );
 
-        $assetLocator  = $this->getDefinition( AssetManager::LOCATOR_ID, true );
+        $assetLocator  = $this->getDefinition( AssetManager::LOCATOR_ID );
         $assetManifest = new AssetManifest(
-            ...$this->getDefinition( $this->manifest, true )->getArguments(),
+            ...$this->getDefinition( $this->manifest )->getArguments(),
         );
 
         dump( $assetLocator, $assetManifest );

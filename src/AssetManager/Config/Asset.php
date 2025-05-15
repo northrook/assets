@@ -89,33 +89,6 @@ final class Asset extends Autodiscover implements Stringable
     }
 
     #[Override]
-    protected function serviceId() : string
-    {
-        if ( ! isset( $this->className ) ) {
-            $message = "Could not generate RegisteredAsset->name: RegisteredAsset->className is not defined.\n";
-            $message .= 'Call RegisteredAsset->registerService( .. ) when registering the asset.';
-            throw new LogicException( $message );
-        }
-
-        $serviceId = \explode( '\\', \strtolower( $this->className ) );
-
-        $typeName  = $this->type->name();
-        $className = \array_pop( $serviceId );
-
-        if ( \end( $serviceId ) !== $typeName ) {
-            $serviceId[] = $typeName;
-        }
-
-        if ( \str_ends_with( $className, $typeName ) ) {
-            $className = \substr( $className, 0, -\strlen( $typeName ) );
-        }
-
-        $serviceId[] = $className;
-
-        return \implode( '.', $serviceId );
-    }
-
-    #[Override]
     protected function register() : void
     {
         if ( ! isset( $this->name ) ) {
@@ -140,9 +113,9 @@ final class Asset extends Autodiscover implements Stringable
                 $extension = null;
 
                 foreach ( $this->source as $source ) {
-                    $soureExtension = \pathinfo( $source, PATHINFO_EXTENSION );
-                    if ( $soureExtension ) {
-                        $extension = $soureExtension;
+                    $sourceExt = \pathinfo( $source, PATHINFO_EXTENSION );
+                    if ( $sourceExt ) {
+                        $extension = $sourceExt;
 
                         break;
                     }
