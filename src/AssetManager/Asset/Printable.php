@@ -2,14 +2,14 @@
 
 namespace Core\AssetManager\Asset;
 
-use Core\AssetManager\Asset;
+use Core\AssetManager\AbstractAsset;
 use Core\Compiler\Hook\SetDependencies;
 use Core\Compiler\Hook;
 use Core\View\Element;
 use Stringable;
 
 /**
- * @phpstan-require-extends Asset
+ * @phpstan-require-extends AbstractAsset
  * @phpstan-require-implements Stringable
  */
 trait Printable

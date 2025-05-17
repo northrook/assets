@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Core\AssetManager\Config;
 
 use Attribute;
+use Core\AssetManager\AbstractAsset;
 use Core\AssetManager\Asset\Type;
 use Core\AssetManager;
 use Core\Exception\{AssetException, TypeException};
@@ -20,9 +21,9 @@ use const Support\AUTO;
  * Reference this asset using:
  * - {@see Asset::$name}
  * - {@see Asset::$className}
- * - {@see \Core\AssetManager\Asset::$ppublicPath}
+ * - {@see Asset::$publicPath}
  *
- * @extends Autodiscover<\Core\AssetManager\Asset> registered as a {@see service}.
+ * @extends Autodiscover<AbstractAsset> registered as a {@see service}.
  * @used-by \Core\AssetManager
  */
 #[Attribute( Attribute::TARGET_CLASS )]
@@ -150,7 +151,7 @@ final class Asset extends Autodiscover implements Stringable
      * @param string|string[] $sources
      * @param ?Type           $type
      *
-     * @return array<array-key, string>
+     * @return array{0:array<array-key, string>, 1: Type}
      */
     private function resolveSources(
         string|array $sources,

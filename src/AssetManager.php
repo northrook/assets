@@ -6,19 +6,16 @@ namespace Core;
 
 // : MUST allow dynamic fetching of valid sources
 
-use Cache\CachePoolTrait;
+use Cache\{CacheHandler};
+use Core\AssetManager\{AbstractAsset, Asset\Meta, Asset\Type, AssetManifest};
 use Core\Assets\StyleAsset;
-use Core\AssetManager\Asset\{Meta};
-use Core\AssetManager\{Asset, Asset\Type, AssetManifest};
 use Core\Exception\AssetException;
-use Core\Interface\{AssetInterface, LazyService, LogHandler, Loggable};
-use Core\View\Element;
+use Core\Interface\{LazyService, LogHandler, Loggable};
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use InvalidArgumentException;
 use LogicException;
 use Stringable;
-use function Support\{is_path, is_url};
 
 /**
  * Pathfinder keys:
@@ -35,14 +32,14 @@ class AssetManager implements LazyService, Loggable
 
     public const string MANIFEST_ID = AssetManifest::class;
 
-    use LogHandler, CachePoolTrait;
+    use LogHandler, CacheHandler;
 
     /**
-     * @param array<string,string>       $assetDirectories
-     * @param AssetManifest              $manifest
-     * @param Pathfinder                 $pathfinder
-     * @param null|ServiceLocator<Asset> $serviceLocator
-     * @param ?CacheItemPoolInterface    $cache
+     * @param array<string,string>               $assetDirectories
+     * @param AssetManifest                      $manifest
+     * @param Pathfinder                         $pathfinder
+     * @param null|ServiceLocator<AbstractAsset> $serviceLocator
+     * @param ?CacheItemPoolInterface            $cache
      */
     final public function __construct(
         protected readonly array           $assetDirectories,
@@ -59,9 +56,9 @@ class AssetManager implements LazyService, Loggable
      *
      * @param string $asset
      *
-     * @return Asset
+     * @return AbstractAsset
      */
-    final public function getAsset( string $asset ) : AssetInterface
+    final public function getAsset( string $asset ) : AbstractAsset
     {
         // :: Identifier - can be:
         // . final AssetClass | hexdec16
@@ -91,11 +88,11 @@ class AssetManager implements LazyService, Loggable
     // }
 
     /**
-     * @param class-string<Asset>|string $asset
+     * @param class-string<AbstractAsset>|string $asset
      *
-     * @return Asset
+     * @return AbstractAsset
      */
-    final public function getRegisteredAsset( string $asset ) : Asset
+    final public function getRegisteredAsset( string $asset ) : AbstractAsset
     {
         if ( ! $this->serviceLocator ) {
             throw new LogicException( 'Service locator is not set.' );
@@ -104,10 +101,10 @@ class AssetManager implements LazyService, Loggable
         $meta = $this->manifest->getMeta( $asset );
 
         if ( \strlen( $asset ) === 16 && \ctype_alnum( $asset ) ) {
-            $asset = $meta->get( 'class', Asset::class );
+            $asset = $meta->get( 'class', AbstractAsset::class );
         }
 
-        if ( ! \is_subclass_of( $asset, Asset::class ) ) {
+        if ( ! \is_subclass_of( $asset, AbstractAsset::class ) ) {
             throw new InvalidArgumentException( 'Class must be a subclass of RegisteredAsset.' );
         }
 
@@ -118,12 +115,12 @@ class AssetManager implements LazyService, Loggable
         return $this->serviceLocator->get( $asset );
     }
 
-    final public function resolveAssetKey( string|Meta|Asset $from ) : string
+    final public function resolveAssetKey( string|Meta|AbstractAsset $from ) : string
     {
         $string = match ( true ) {
-            $from instanceof Asset => $from->meta->id,
-            $from instanceof Meta  => $from->id,
-            default                => $from,
+            $from instanceof AbstractAsset => $from->meta->id,
+            $from instanceof Meta          => $from->id,
+            default                        => $from,
         };
 
         $length = \strlen( $string );
@@ -155,7 +152,7 @@ class AssetManager implements LazyService, Loggable
      *
      * @return ($nullable is true ? null|Meta : Meta)
      */
-    final public function getAssetMeta( string $key, bool $nullable = false ) : ?Asset
+    final public function getAssetMeta( string $key, bool $nullable = false ) : ?AbstractAsset
     {
         try {
             return $this->manifest->getMeta( $key );
@@ -174,7 +171,7 @@ class AssetManager implements LazyService, Loggable
     /**
      * @param string|Stringable|Type $from
      *
-     * @return class-string<Asset>
+     * @return class-string<AbstractAsset>
      */
     final protected function resolveAssetClass( string|Type|Stringable $from ) : string
     {

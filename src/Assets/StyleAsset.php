@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Assets;
 
-use Core\AssetManager\Asset;
+use Core\AssetManager\{AbstractAsset};
 use Core\AssetManager\Asset\{Inlinable, Printable};
 use Core\View\Element;
 use Core\AssetManager\Asset\{Minifier};
@@ -12,9 +12,14 @@ use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
 use Support\StylesheetMinifier;
 
-class StyleAsset extends Asset implements Stringable
+class StyleAsset extends AbstractAsset implements Stringable
 {
     use Printable, Inlinable, Minifier;
+
+    protected function build() : void
+    {
+        // TODO: Implement build() method.
+    }
 
     final protected function getMinifier() : StylesheetMinifier
     {

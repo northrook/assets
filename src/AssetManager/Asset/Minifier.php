@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Core\AssetManager\Asset;
 
-use Core\AssetManager\Asset;
+use Core\AssetManager\AbstractAsset;
 use Support\Minify;
 
 /**
- * @phpstan-require-extends Asset
+ * @phpstan-require-extends AbstractAsset
  */
 trait Minifier
 {

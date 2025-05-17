@@ -27,8 +27,8 @@
     "northrook/view": "dev-main",
     "symfony/finder": "^7.2",
     "voku/portable-ascii": "^2.0",
-    "northrook/image": "dev-main",
-    "northrook/php-curl": "dev-main"
+    "northrook/php-curl": "dev-main",
+    "northrook/image": "dev-main"
   },
   "require-dev": {
     "symfony/framework-bundle": "@stable",

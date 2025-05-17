@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\AssetManager\Config;
 
-use Core\{AssetManager\AbstractAsset, AssetManager\Asset, AssetManager};
+use Core\{AssetManager\AbstractAsset, AssetManager};
 use Core\AssetManager\Config\Asset as AssetAttribute;
 use Core\Symfony\Console\ListReport;
 use Core\Symfony\DependencyInjection\CompilerPass;

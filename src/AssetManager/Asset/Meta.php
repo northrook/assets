@@ -4,7 +4,7 @@
 
 namespace Core\AssetManager\Asset;
 
-use Core\AssetManager\Asset;
+use Core\AssetManager\{AbstractAsset};
 use Core\Exception\AssetException;
 use InvalidArgumentException;
 use Stringable;
@@ -17,24 +17,26 @@ use function Support\{datetime, normalize_newline, normalize_path};
 /**
  * @internal
  *
- * @property-read class-string<Asset>      $class
- * @property-read ?string                  $id
- * @property-read Type                     $type
- * @property-read Origin                   $origin
- * @property-read string                   $url
- * @property-read string                   $source
- * @property-read array<array-key, string> $sources
- * @property-read string                   $version
+ * @property-read class-string<AbstractAsset> $class
+ * @property-read ?string                     $id
+ * @property-read Type                        $type
+ * @property-read Origin                      $origin
+ * @property-read string                      $url
+ * @property-read string                      $source
+ * @property-read array<array-key, string>    $sources
+ * @property-read string                      $version
  */
 final class Meta
 {
     public const string               EXTENSION = 'meta';
 
     private const array PLACEHOLDER = [
-        'id'     => null,
-        'type'   => null,
-        'class'  => null,
-        'origin' => null,
+        'id'      => null,
+        'type'    => null,
+        'class'   => null,
+        'origin'  => null,
+        'sources' => [],
+        'public'  => [],
     ];
 
     protected bool $hasChanges = false;
@@ -58,8 +60,8 @@ final class Meta
     }
 
     /**
-     * @param class-string<Asset> $class
-     * @param string|string[]     $source
+     * @param class-string<AbstractAsset> $class
+     * @param string|string[]             $source
      */
     public static function create(
         string       $class,
@@ -91,7 +93,7 @@ final class Meta
     }
 
     /**
-     * @param class-string<Asset>             $asset
+     * @param class-string<AbstractAsset>     $asset
      * @param array<array-key, string>|string $source
      *
      * @return string
@@ -121,7 +123,7 @@ final class Meta
 
     /**
      * @param string                         $filePath
-     * @param class-string<Asset>            $class
+     * @param class-string<AbstractAsset>    $class
      * @param array<array-key,string>|string $source
      * @param ?string                        $id
      *
@@ -462,7 +464,7 @@ final class Meta
 
     private function assetClass( string $class ) : self
     {
-        \assert( \class_exists( $class ) && \is_subclass_of( $class, Asset::class ) );
+        \assert( \class_exists( $class ) && \is_subclass_of( $class, AbstractAsset::class ) );
         $this->meta['class'] = $class;
         return $this;
     }
