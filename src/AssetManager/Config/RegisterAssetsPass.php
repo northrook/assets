@@ -16,24 +16,46 @@ final class RegisterAssetsPass extends CompilerPass
     public function compile( ContainerBuilder $container ) : void
     {
         $this
-            ->invokableServices()
-            ->registerAssetServices();
+            ->invokableServices();
+        // ->registerAssetServices();
     }
 
     protected function invokableServices() : self
     {
         $registeredServices = new ListReport( __METHOD__ );
 
-        foreach ( $this->getDeclaredClasses( AbstractAsset::class ) as $class ) {
-            $registeredServices->item( $class );
-            // $this->container->getDefinition( $class )
-            //     ->addMethodCall(
-            //         'setServiceLocator',
-            //         [$this->serviceLocator],
-            //     );
+        $setDependencies = [
+            '$cache' => new Reference( 'cache.asset_pool' ),
+        ];
 
-            dump( $class );
+        foreach ( $this->getDeclaredClasses(
+            inDirectory : $this->projectDirectory.'/vendor/northrook',
+            subclassOf  : AbstractAsset::class,
+        ) as $className ) {
+            $registeredServices->item( $className );
+
+            $asset = $this->getDefinition(
+                id           : $className,
+                newOnMissing : true,
+            );
+
+            // $asset->hasTag( )
+
+            if ( ! $asset->hasTag( AssetManager::LOCATOR_ID ) ) {
+                $asset->addTag( AssetManager::LOCATOR_ID );
+            }
+            // if ( ! $asset->hasTag( 'monolog.logger')) {
+            //     $asset->addTag( 'monolog.logger', [ 'channel' => 'assets' ] );
+            // }
+            $asset->addTag( 'controller.service_arguments' );
+
+            $asset->setPublic( true );
+            $asset->setAutowired( true );
+            $asset->addMethodCall( 'setDependencies', $setDependencies );
+
+            $this->container->setDefinition( $className, $asset );
         }
+        // dd();
 
         $registeredServices->output();
         return $this;
@@ -80,7 +102,7 @@ final class RegisterAssetsPass extends CompilerPass
     /**
      * @param Definition $definition
      *
-     * @return null|AssetAttribute<Asset>
+     * @return null|AssetAttribute<AssetAttribute>
      */
     private function definitionViewComponentAttribute( Definition $definition ) : ?AssetAttribute
     {
@@ -93,9 +115,9 @@ final class RegisterAssetsPass extends CompilerPass
             return null;
         }
 
-        if ( ! \is_subclass_of( $className, Asset::class ) ) {
+        if ( ! \is_subclass_of( $className, AssetAttribute::class ) ) {
             $this->console->error(
-                "{$className} must extend the '".Asset::class."' class.",
+                "{$className} must extend the '".AssetAttribute::class."' class.",
             );
             return null;
         }

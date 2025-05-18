@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Core\AssetManager\Asset;
+namespace Core\Asset;
 
 use function Support\is_url;
 use Stringable;
@@ -28,7 +28,7 @@ enum Origin : string
      *
      * @return self
      */
-    public static function fromPath(
+    final public static function fromPath(
         string|Stringable $value,
         bool              $throwOnInvalid = false,
     ) : self {

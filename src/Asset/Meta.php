@@ -2,9 +2,9 @@
 
 /** @noinspection DuplicatedCode */
 
-namespace Core\AssetManager\Asset;
+namespace Core\Asset;
 
-use Core\AssetManager\{AbstractAsset};
+use Core\AssetManager\AbstractAsset;
 use Core\Exception\AssetException;
 use InvalidArgumentException;
 use Stringable;
@@ -510,6 +510,7 @@ final class Meta
 
         foreach ( $this->meta['sources'] as $source ) {
             $type = Type::from( $source );
+
             $this->meta['type'] ??= $type;
 
             if ( $this->type !== $type ) {

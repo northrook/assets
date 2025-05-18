@@ -3,12 +3,11 @@
 namespace Core\AssetManager;
 
 use Cache\{CacheHandler};
-use Core\Interface\{AssetInterface, LogHandler, Loggable};
+use Core\Interface\{AssetInterface, LogHandler, Loggable, SettingsProviderInterface};
+use Core\Asset\{Data, Meta, Type};
 use Core\Compiler\Hook;
-use Core\Compiler\Hook\SetDependencies;
-use Core\AssetManager\Asset\{Meta, Type};
+use Core\Compiler\Hook\{OnBuild, SetDependencies};
 use Core\Pathfinder;
-use Core\Symfony\DependencyInjection\SettingsAccessor;
 use Core\Profiler\{StopwatchProfiler};
 use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
@@ -17,7 +16,13 @@ use function Support\slug;
 
 abstract class AbstractAsset implements AssetInterface, Loggable
 {
-    use LogHandler, CacheHandler, StopwatchProfiler, SettingsAccessor;
+    use LogHandler, CacheHandler, StopwatchProfiler;
+
+    public const Type TYPE = Type::NULL;
+
+    protected readonly Pathfinder $pathfinder;
+
+    protected readonly SettingsProviderInterface $settings;
 
     protected readonly string $invokedSource;
 
@@ -25,39 +30,42 @@ abstract class AbstractAsset implements AssetInterface, Loggable
 
     public readonly Type $type;
 
-    public readonly Meta $meta;
+    public readonly Meta|Data $meta;
 
-    public function __construct(
-            protected readonly Pathfinder $pathfinder,
-            ?CacheItemPoolInterface       $cache = null,
-            ?Stopwatch                    $stopwatch = null,
-    )
-    {
+    final public function setDependencies(
+        Pathfinder                $pathfinder,
+        SettingsProviderInterface $settings,
+        ?CacheItemPoolInterface   $cache = null,
+        ?Stopwatch                $stopwatch = null,
+    ) : void {
+        $this->pathfinder = $pathfinder;
+        $this->settings   = $settings;
         $this->assignProfiler(
-                profiler : $stopwatch,
-                category : 'asset',
+            profiler : $stopwatch,
+            category : 'asset',
         );
         $this->assignCacheAdapter(
-                adapter    : $cache,
-                prefix     : 'asset',
-                defer      : true,
-                expiration : 14_400, // 4 hours
+            adapter    : $cache,
+            prefix     : 'asset',
+            defer      : true,
+            expiration : 14_400, // 4 hours
+            stopwatch  : $stopwatch,
         );
+        Hook::fire( $this, SetDependencies::class );
     }
 
     /**
      * Returns a new instance of {@see self}.
      *
-     * @param string|Stringable  $source
-     * @param ?Meta              $meta
+     * @param string|Stringable $source
+     * @param ?Meta             $meta
      *
      * @return $this
      */
     final public function __invoke(
-            string | Stringable $source,
-            ?Meta $meta = null,
-    ) : self
-    {
+        string|Stringable $source,
+        ?Meta             $meta = null,
+    ) : self {
         $source = (string) $source;
         $slug   = slug( $source );
         $type   = Type::from( $source );
@@ -75,7 +83,8 @@ abstract class AbstractAsset implements AssetInterface, Loggable
         $asset->type          = $type;
         $asset->meta          = $meta ?? Meta::create( $this::class, $source );
 
-        Hook::fire( $asset, SetDependencies::class );
+        Hook::fire( $asset, OnBuild::class );
+
         $asset->build();
         $this->setCache( $slug, $asset );
         return $asset;
@@ -93,16 +102,46 @@ abstract class AbstractAsset implements AssetInterface, Loggable
         return __METHOD__;
     }
 
-    public function getUrl(
-            bool $relative = false,
-            bool $version = false,
-    ) : string
-    {
+    final public function getUrl(
+        bool $relative = false,
+        bool $version = false,
+    ) : string {
         return __METHOD__;
     }
 
     final public function getVersion() : string
     {
         return __METHOD__;
+    }
+
+    /**
+     * @return array<array-key,SourceResolver>
+     */
+    final public function getSources() : array
+    {
+        return \array_map(
+            fn( $source ) => new SourceResolver( $source, $this->pathfinder->get( 'dir.assets' ) ),
+            $this->meta->sources(),
+        );
+    }
+
+    /**
+     * Get a setting by its key.
+     *
+     * If no setting is found, but a valid `set` key and `value` is provided, and given the current `user` has relevant permissions, the Setting will be set and saved.
+     *
+     * @template Setting of null|array<array-key, scalar>|scalar
+     *
+     * @param string  $setting
+     * @param Setting $default
+     *
+     * @return null|array|bool|float|int|string
+     * @phpstan-return Setting
+     */
+    final public function getSetting(
+        string $setting,
+        mixed  $default,
+    ) : mixed {
+        return $this->settings->get( $this->type->key( $setting ), $default );
     }
 }

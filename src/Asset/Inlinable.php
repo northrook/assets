@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Core\AssetManager\Asset;
+namespace Core\Asset;
 
 use Core\AssetManager\AbstractAsset;
-use Core\Compiler\Hook\SetDependencies;
+use Core\Compiler\Hook\OnBuild;
 
 /**
  * @phpstan-require-extends AbstractAsset
  */
 trait Inlinable
 {
-    #[SetDependencies]
+    #[OnBuild]
     final public function prefersInline( bool $set = true ) : self
     {
         $this->meta->set( prefersInline : $set );

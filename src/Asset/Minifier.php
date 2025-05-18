@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Core\AssetManager\Asset;
+namespace Core\Asset;
 
 use Core\AssetManager\AbstractAsset;
 use Support\Minify;

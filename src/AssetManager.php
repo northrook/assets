@@ -7,7 +7,8 @@ namespace Core;
 // : MUST allow dynamic fetching of valid sources
 
 use Cache\{CacheHandler};
-use Core\AssetManager\{AbstractAsset, Asset\Meta, Asset\Type, AssetManifest};
+use Core\AssetManager\{AbstractAsset, AssetManifest};
+use Core\Asset\{Meta, Type};
 use Core\Assets\StyleAsset;
 use Core\Exception\AssetException;
 use Core\Interface\{LazyService, LogHandler, Loggable};

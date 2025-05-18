@@ -6,7 +6,7 @@ namespace Core\AssetManager\Config;
 
 use Attribute;
 use Core\AssetManager\AbstractAsset;
-use Core\AssetManager\Asset\Type;
+use Core\Asset\Type;
 use Core\AssetManager;
 use Core\Exception\{AssetException, TypeException};
 use Core\Symfony\DependencyInjection\Autodiscover;
@@ -53,14 +53,12 @@ final class Asset extends Autodiscover implements Stringable
      * @param ?string                        $publicPath
      * @param ?Type                          $type       [AUTO] from `source`
      * @param ?string                        $name       [AUTO] from `className`
-     * @param ?string                        $serviceId  [AUTO] from `$name`
      */
     public function __construct(
         string|array $source,
         ?string      $publicPath = AUTO,
         ?Type        $type = AUTO,
         ?string      $name = AUTO,
-        ?string      $serviceId = AUTO,
     ) {
         if ( $name !== AUTO ) {
             $this->name = $this->validateName( $name );
@@ -73,14 +71,13 @@ final class Asset extends Autodiscover implements Stringable
         [$this->source, $this->type] = $this->resolveSources( $source, $type );
 
         parent::__construct(
-            serviceId : $serviceId,
-            tag       : [
+            tag      : [
                 AssetManager::LOCATOR_ID,
                 'monolog.logger' => ['channel' => 'assets'],
             ],
-            lazy      : false,
-            public    : false,
-            autowire  : true,
+            lazy     : false,
+            public   : false,
+            autowire : true,
         );
     }
 

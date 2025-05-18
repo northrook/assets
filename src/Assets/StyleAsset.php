@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Core\Assets;
 
 use Core\AssetManager\{AbstractAsset};
-use Core\AssetManager\Asset\{Inlinable, Printable};
+use Core\Asset\{Printable};
 use Core\View\Element;
-use Core\AssetManager\Asset\{Minifier};
+use Core\Asset\{Inlinable, Minifier, Type};
 use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
 use Support\StylesheetMinifier;
@@ -15,6 +15,8 @@ use Support\StylesheetMinifier;
 class StyleAsset extends AbstractAsset implements Stringable
 {
     use Printable, Inlinable, Minifier;
+
+    public const Type TYPE = Type::STYLE;
 
     protected function build() : void
     {

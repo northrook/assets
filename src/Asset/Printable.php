@@ -1,10 +1,9 @@
 <?php
 
-namespace Core\AssetManager\Asset;
+namespace Core\Asset;
 
 use Core\AssetManager\AbstractAsset;
-use Core\Compiler\Hook\SetDependencies;
-use Core\Compiler\Hook;
+use Core\Compiler\Hook\OnBuild;
 use Core\View\Element;
 use Stringable;
 
@@ -18,7 +17,7 @@ trait Printable
 
     abstract protected function render() : void;
 
-    #[SetDependencies]
+    #[OnBuild]
     final public function getElement() : Element
     {
         return $this->element ??= new Element();
@@ -27,7 +26,6 @@ trait Printable
     final public function __toString() : string
     {
         $this->render();
-        Hook::fire( $this );
         return $this->element->render();
     }
 }

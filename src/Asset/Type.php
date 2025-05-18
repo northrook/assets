@@ -2,16 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Core\AssetManager\Asset;
+namespace Core\Asset;
 
-use InvalidArgumentException;
-use ReflectionEnum;
-use ReflectionException;
+use InvalidArgumentException, ReflectionEnum, ReflectionException;
 
 enum Type
 {
     private const array MAP = [
-        // Core AssetService Types
+        // Core Asset Types
         'css'   => self::STYLE,
         'scss'  => self::STYLE,
         'js'    => self::SCRIPT,
@@ -33,7 +31,7 @@ enum Type
         'ttf'   => self::FONT,
         'otf'   => self::FONT,
 
-        // Document AssetService Types
+        // Document Asset Types
         'doc'  => self::DOCUMENT,
         'docx' => self::DOCUMENT,
         'pdf'  => self::DOCUMENT,
@@ -50,20 +48,20 @@ enum Type
         'ppt'  => self::PRESENTATION,
         'pptx' => self::PRESENTATION,
 
-        // Archive AssetService Types
+        // Archive Asset Types
         'zip' => self::ARCHIVE,
         'rar' => self::ARCHIVE,
         'tar' => self::ARCHIVE,
         'gz'  => self::ARCHIVE,
 
-        // Executable AssetService Types
+        // Executable Asset Types
         'exe' => self::EXECUTABLE,
         'bat' => self::EXECUTABLE,
         'sh'  => self::EXECUTABLE,
         'deb' => self::PACKAGE,
         'rpm' => self::PACKAGE,
 
-        // Code AssetService Types
+        // Code Asset Types
         'php'   => self::SOURCE,
         'html'  => self::SOURCE,
         'py'    => self::SOURCE,
@@ -76,7 +74,7 @@ enum Type
         'view'  => self::TEMPLATE,
         'blade' => self::TEMPLATE,
 
-        // Design and Media AssetService Types
+        // Design and Media Asset Types
         'obj'    => self::MODEL,
         'psd'    => self::DESIGN,
         'sketch' => self::DESIGN,
@@ -95,9 +93,10 @@ enum Type
         'ico' => self::ICON,
     ];
 
-    case ABSTRACT;
+    // Undefined Type
+    case NULL;
 
-    // Core AssetService Types
+    // Core Asset Types
     case STYLE;
     case SCRIPT;
     case IMAGE;
@@ -105,33 +104,33 @@ enum Type
     case AUDIO;
     case FONT;
 
-    // Document AssetService Types
+    // Document Asset Types
     case DOCUMENT;
     case DATA;
     case TEXT;
     case SPREADSHEET;
     case PRESENTATION;
 
-    // Archive AssetService Types
+    // Archive Asset Types
     case ARCHIVE;
 
-    // Executable AssetService Types
+    // Executable Asset Types
     case EXECUTABLE;
     case PACKAGE;
 
-    // Code AssetService Types
+    // Code Asset Types
     case SOURCE;
     case CONFIG;
     case TEMPLATE;
 
-    // Design and Media AssetService Types
+    // Design and Media Asset Types
     case MODEL;
     case DESIGN;
     case VECTOR;
     case LAYOUT;
     case TEXTURE;
 
-    // Miscellaneous AssetService Types
+    // Miscellaneous Asset Types
     case LOG;
     case BACKUP;
     case CERTIFICATE;
@@ -139,36 +138,88 @@ enum Type
     case ICON;
 
     /**
+     * Returns a `dot.notated` key.
+     *
+     * @param ?string $append
+     *
      * @return lowercase-string
-     * @param  bool             $pluralize
      */
-    public function name( bool $pluralize = false ) : string
+    final public function key( ?string $append = null ) : string
+    {
+        static $className = null;
+        $className ??= \strtolower( \strtr( $this::class, '\\', '.' ) );
+        $key = [$className, $this->name];
+        if ( $append ) {
+            \assert(
+                \ctype_alnum( \str_replace( ['.', '_'], '', $append ) ),
+                'Keys only allow alphanumeric characters, underscores, and periods.',
+            );
+            $key[] = \trim( $append, '.' );
+        }
+        return \strtolower( \implode( '.', $key ) );
+    }
+
+    /**
+     * @param bool $pluralize
+     *
+     * @return lowercase-string
+     */
+    final public function name( bool $pluralize = false ) : string
     {
         $name = \strtolower( $this->name );
 
         return $pluralize ? \rtrim( $name, 's' ).'s' : $name;
     }
 
-    /**
-     * @param bool $string
-     *
-     * @return ($string is true ? string : string[])
-     */
-    public function extensions( bool $string = false ) : array|string
+    final public function extension( ?string $string = null ) : string
     {
-        $extensions = [];
+        $extensions = $this->extensions();
 
-        foreach ( Type::MAP as $extension => $type ) {
-            if ( $type === $this ) {
-                $extensions[] = $extension;
+        if ( $string ) {
+            $dot = $string[0] === '.' ? '.' : '';
+            $get = \strtolower( \trim( $string, '.' ) );
+            $ext = $extensions[$get] ?? null;
+
+            if ( ! $ext ) {
+                \assert(
+                    \ctype_alnum( $get ),
+                    'File extensions may only contain alphanumeric characters.',
+                );
+                throw new InvalidArgumentException(
+                    "'{$string}' is not a valid extension for the '{$this->name}' ".$this::class.'.',
+                );
+            }
+
+            return $dot.$ext;
+        }
+
+        return \reset( $extensions )
+                ?: throw new InvalidArgumentException(
+                    "No extension for '{$this->name}' ".$this::class.'.',
+                );
+    }
+
+    /**
+     * @param false|string $implode
+     *
+     * @return ($implode is string ? string : string[])
+     */
+    final public function extensions( false|string $implode = false ) : array|string
+    {
+        /** @var array<string,array<string,string>> $extensions */
+        static $extensions = [];
+
+        if ( empty( $extensions ) ) {
+            foreach ( Type::MAP as $extension => $type ) {
+                $extensions[$type->name][$extension] = $extension;
             }
         }
 
-        if ( $string ) {
-            return \implode( ', ', $extensions );
+        if ( $implode ) {
+            return \implode( $implode, $extensions[$this->name] );
         }
 
-        return $extensions;
+        return $extensions[$this->name];
     }
 
     /**
@@ -177,7 +228,7 @@ enum Type
      *
      * @return ($nullable is true ? null|static : static)
      */
-    public static function from( string|Type $string, bool $nullable = false ) : ?Type
+    final public static function from( string|Type $string, bool $nullable = false ) : ?Type
     {
         if ( $string instanceof self ) {
             return $string;
