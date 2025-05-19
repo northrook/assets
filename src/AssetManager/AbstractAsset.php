@@ -3,8 +3,9 @@
 namespace Core\AssetManager;
 
 use Cache\{CacheHandler};
-use Core\Interface\{AssetInterface, LogHandler, Loggable, SettingsProviderInterface};
-use Core\Asset\{Data, Meta, Type};
+use Core\Interface\{AssetInterface, LogHandler, Loggable};
+use Core\Autowire\SettingsAccessor;
+use Core\Asset\{Meta, Type};
 use Core\Compiler\Hook;
 use Core\Compiler\Hook\{OnBuild, SetDependencies};
 use Core\Pathfinder;
@@ -16,13 +17,14 @@ use function Support\slug;
 
 abstract class AbstractAsset implements AssetInterface, Loggable
 {
-    use LogHandler, CacheHandler, StopwatchProfiler;
+    use SettingsAccessor,
+        LogHandler,
+        CacheHandler,
+        StopwatchProfiler;
 
     public const Type TYPE = Type::NULL;
 
     protected readonly Pathfinder $pathfinder;
-
-    protected readonly SettingsProviderInterface $settings;
 
     protected readonly string $invokedSource;
 
@@ -30,16 +32,14 @@ abstract class AbstractAsset implements AssetInterface, Loggable
 
     public readonly Type $type;
 
-    public readonly Meta|Data $meta;
+    public readonly Meta $meta;
 
     final public function setDependencies(
-        Pathfinder                $pathfinder,
-        SettingsProviderInterface $settings,
-        ?CacheItemPoolInterface   $cache = null,
-        ?Stopwatch                $stopwatch = null,
+        Pathfinder              $pathfinder,
+        ?CacheItemPoolInterface $cache = null,
+        ?Stopwatch              $stopwatch = null,
     ) : void {
         $this->pathfinder = $pathfinder;
-        $this->settings   = $settings;
         $this->assignProfiler(
             profiler : $stopwatch,
             category : 'asset',
@@ -123,25 +123,5 @@ abstract class AbstractAsset implements AssetInterface, Loggable
             fn( $source ) => new SourceResolver( $source, $this->pathfinder->get( 'dir.assets' ) ),
             $this->meta->sources(),
         );
-    }
-
-    /**
-     * Get a setting by its key.
-     *
-     * If no setting is found, but a valid `set` key and `value` is provided, and given the current `user` has relevant permissions, the Setting will be set and saved.
-     *
-     * @template Setting of null|array<array-key, scalar>|scalar
-     *
-     * @param string  $setting
-     * @param Setting $default
-     *
-     * @return null|array|bool|float|int|string
-     * @phpstan-return Setting
-     */
-    final public function getSetting(
-        string $setting,
-        mixed  $default,
-    ) : mixed {
-        return $this->settings->get( $this->type->key( $setting ), $default );
     }
 }
