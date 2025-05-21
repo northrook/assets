@@ -15,7 +15,6 @@ use Symfony\Component\Stopwatch\Stopwatch;
 use function Support\slug;
 
 /**
- * @internal
  */
 abstract class AbstractAsset implements AssetInterface, Loggable
 {
@@ -34,7 +33,13 @@ abstract class AbstractAsset implements AssetInterface, Loggable
 
     public readonly Meta $meta;
 
-    final public function __construct(
+    /**
+     * @param Pathfinder                     $pathfinder
+     * @param null|SettingsProviderInterface $settings
+     * @param null|CacheItemPoolInterface    $cache
+     * @param null|Stopwatch                 $stopwatch
+     */
+    public function __construct(
         protected readonly Pathfinder               $pathfinder,
         private readonly ?SettingsProviderInterface $settings = null,
         ?CacheItemPoolInterface                     $cache = null,
@@ -57,11 +62,12 @@ abstract class AbstractAsset implements AssetInterface, Loggable
             stopwatch   : $stopwatch,
         );
 
+        $this->meta = Meta::new( $this::class );
+
         Hook::fire( $this, SetDependencies::class );
     }
 
     /**
-     *
      * Returns a new instance of {@see self}.
      *
      * @param Meta|string|Stringable $source
@@ -74,9 +80,7 @@ abstract class AbstractAsset implements AssetInterface, Loggable
         if ( $source instanceof Meta ) {
             $meta   = $source;
             $source = $meta->source;
-        }
-        else {
-            $meta = Meta::create( $this::class, $source );
+            $this->meta->import( $meta );
         }
 
         $slug = slug( $source );
@@ -93,7 +97,6 @@ abstract class AbstractAsset implements AssetInterface, Loggable
         $asset                = clone $this;
         $asset->invokedSource = $source;
         $asset->type          = $type;
-        $asset->meta          = $meta;
 
         Hook::fire( $asset, OnBuild::class );
 

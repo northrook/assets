@@ -30,15 +30,6 @@ final class Meta
 {
     public const string               EXTENSION = 'meta';
 
-    private const array PLACEHOLDER = [
-        'id'      => null,
-        'type'    => null,
-        'class'   => null,
-        'origin'  => null,
-        'sources' => [],
-        'public'  => [],
-    ];
-
     protected bool $hasChanges = false;
 
     /**
@@ -47,7 +38,14 @@ final class Meta
      * @param ?string              $filePath
      */
     private function __construct(
-        protected array          $meta = Meta::PLACEHOLDER,
+        protected array          $meta = [
+            'id'      => null,
+            'type'    => null,
+            'class'   => null,
+            'origin'  => null,
+            'sources' => [],
+            'public'  => [],
+        ],
         private readonly ?string $hash = null,
         protected ?string        $filePath = null,
     ) {}
@@ -57,6 +55,17 @@ final class Meta
         if ( $this->filePath && $this->hasChanges ) {
             $this->commit();
         }
+    }
+
+    /**
+     * @param class-string<AbstractAsset> $class
+     */
+    public static function new(
+        string $class,
+    ) : self {
+        $meta = new self();
+
+        return $meta->assetClass( $class );
     }
 
     /**
@@ -291,6 +300,12 @@ final class Meta
     public function has( string $key ) : bool
     {
         return isset( $this->meta[$key] );
+    }
+
+    public function import( self $from ) : self
+    {
+        $this->meta = $from->meta;
+        return $this;
     }
 
     public function export( bool $JSON = false ) : string
