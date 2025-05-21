@@ -224,8 +224,6 @@ final class Meta
         $this->meta[$key] = $value;
         $this->hasChanges = true;
 
-        dump( \get_defined_vars() );
-
         return $this;
     }
 

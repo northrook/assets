@@ -32,7 +32,8 @@
   },
   "require-dev": {
     "symfony/framework-bundle": "@stable",
-    "northrook/dev": "dev-main"
+    "northrook/dev": "dev-main",
+    "northrook/core-framework": "dev-main"
   },
   "scripts": {
     "phpstan": "vendor/bin/phpstan analyse src"

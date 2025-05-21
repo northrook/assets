@@ -21,7 +21,7 @@ class ImageAsset extends AbstractAsset
 
     protected function build() : void
     {
-        $this->aspect      = Aspect::from( $this->source );
-        $this->orientation = $this->aspect->orientation;
+        // $this->aspect      = Aspect::from( $this->source );
+        // $this->orientation = $this->aspect->orientation;
     }
 }

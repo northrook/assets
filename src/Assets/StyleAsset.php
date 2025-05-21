@@ -7,14 +7,17 @@ namespace Core\Assets;
 use Core\AssetManager\{AbstractAsset};
 use Core\Asset\{Printable};
 use Core\View\Element;
-use Core\Asset\{Inlinable, Minifier, Type};
+use Core\Asset\{Inlinable, Minifiable, Minifier, Type};
 use Psr\Cache\CacheItemPoolInterface;
 use Stringable;
-use Support\StylesheetMinifier;
+use Support\{Minify, StylesheetMinifier};
 
-class StyleAsset extends AbstractAsset implements Stringable
+class StyleAsset extends AbstractAsset implements Stringable, Minifiable
 {
-    use Printable, Inlinable, Minifier;
+    /** @use Minifier<StylesheetMinifier> */
+    use Printable,
+        Inlinable,
+        Minifier;
 
     public const Type TYPE = Type::STYLE;
 
@@ -23,7 +26,7 @@ class StyleAsset extends AbstractAsset implements Stringable
         // TODO: Implement build() method.
     }
 
-    final protected function getMinifier() : StylesheetMinifier
+    final protected function getMinifier() : Minify
     {
         return $this->minifier ??= new StylesheetMinifier(
             cachePool : $this->cache instanceof CacheItemPoolInterface ? $this->cache : null,

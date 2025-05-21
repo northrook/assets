@@ -33,7 +33,9 @@ class AssetManager implements LazyService, Loggable
 
     public const string MANIFEST_ID = AssetManifest::class;
 
-    use LogHandler, CacheHandler;
+    use LogHandler;
+
+    protected readonly CacheHandler $cache;
 
     /**
      * @param array<string,string>               $assetDirectories
@@ -49,7 +51,7 @@ class AssetManager implements LazyService, Loggable
         protected readonly ?ServiceLocator $serviceLocator = null,
         ?CacheItemPoolInterface            $cache = null,
     ) {
-        $this->assignCacheAdapter( $cache, 'assets' );
+        $this->cache = new CacheHandler( $cache, 'asset' );
     }
 
     /**

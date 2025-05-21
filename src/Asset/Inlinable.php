@@ -12,10 +12,20 @@ use Core\Compiler\Hook\OnBuild;
  */
 trait Inlinable
 {
+    /**
+     * @param ?bool $set
+     *
+     * @return bool
+     */
     #[OnBuild]
-    final public function prefersInline( bool $set = true ) : self
+    final public function prefersInline( ?bool $set = null ) : bool
     {
-        $this->meta->set( prefersInline : $set );
-        return $this;
+        if ( $set !== null || ! $this->meta->has( 'prefersInline' ) ) {
+            $this->meta->set(
+                'prefersInline',
+                $set ?? $this->getSetting( 'prefersInline', true ),
+            );
+        }
+        return $this->meta->get( 'prefersInline', $set );
     }
 }

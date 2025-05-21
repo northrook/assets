@@ -5,39 +5,27 @@ declare(strict_types=1);
 namespace Core\Assets;
 
 use Core\AssetManager\AbstractAsset;
-use Core\Asset\{Inlinable, Minifier};
-use Psr\Cache\CacheItemPoolInterface;
-use Support\JavaScriptMinifier;
+use Support\{JavaScriptMinifier};
+use Core\Asset\{Inlinable, Meta, Type};
 use Stringable;
-use Core\Asset\{Printable, Type};
 
-class ScriptAsset extends AbstractAsset implements Stringable
+/**
+ */
+class ScriptAsset extends AbstractAsset
 {
-    use Printable, Inlinable, Minifier;
+    use Inlinable;
 
     public const Type TYPE = Type::SCRIPT;
 
-    protected function getMinifier() : JavaScriptMinifier
-    {
-        return $this->minifier ??= new JavaScriptMinifier(
-            cachePool : $this->cache instanceof CacheItemPoolInterface ? $this->cache : null,
-            logger    : $this->logger,
-        );
-    }
+    public readonly JavaScriptMinifier $minifier;
 
-    final protected function minify() : self
-    {
-        if ( $this->minified ) {
-            $this->log( 'Already minified', level : 'error' );
-            return $this;
-        }
+    public function __invoke(
+        Meta|Stringable|string $source,
+        ?bool                  $prefersInline = null,
+    ) : ScriptAsset {
+        $this->prefersInline( $prefersInline );
 
-        return $this;
-    }
-
-    protected function render() : void
-    {
-        // TODO: Implement render() method.
+        return parent::__invoke( $source );
     }
 
     protected function build() : void
