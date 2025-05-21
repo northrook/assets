@@ -4,60 +4,52 @@ declare(strict_types=1);
 
 namespace Core\AssetManager\Config;
 
-use Core\{AssetManager\AbstractAsset, AssetManager};
-use Core\AssetManager\Config\Asset as AssetAttribute;
+use Core\AssetManager;
+use Core\AssetManager\AbstractAsset;
 use Core\Symfony\Console\ListReport;
 use Core\Symfony\DependencyInjection\CompilerPass;
 use Support\Reflect;
 use Symfony\Component\DependencyInjection\{ContainerBuilder, Definition, Reference};
-
 final class RegisterAssetsPass extends CompilerPass
 {
+    private readonly ListReport $report;
+
     public function compile( ContainerBuilder $container ) : void
     {
+        $this->report = new ListReport( __METHOD__ );
+
         $this
             ->invokableServices();
         // ->registerAssetServices();
+
+        $this->report->output();
     }
 
     protected function invokableServices() : self
     {
-        $registeredServices = new ListReport( __METHOD__ );
-
-        $setDependencies = [
-            '$cache' => new Reference( 'cache.asset_pool' ),
-        ];
-
         foreach ( $this->getDeclaredClasses(
             inDirectory : $this->projectDirectory.'/vendor/northrook',
             subclassOf  : AbstractAsset::class,
         ) as $className ) {
-            $registeredServices->item( $className );
-
-            $asset = $this->getDefinition(
+            $definition = $this->getDefinition(
                 id           : $className,
                 newOnMissing : true,
             );
 
-            // $asset->hasTag( )
+            $definition
+                ->addTag( AssetManager::LOCATOR_ID )
+                ->addTag( 'controller.service_arguments' )
+                ->addTag( 'monolog.logger', ['channel' => 'assets'] );
 
-            if ( ! $asset->hasTag( AssetManager::LOCATOR_ID ) ) {
-                $asset->addTag( AssetManager::LOCATOR_ID );
-            }
-            // if ( ! $asset->hasTag( 'monolog.logger')) {
-            //     $asset->addTag( 'monolog.logger', [ 'channel' => 'assets' ] );
-            // }
-            $asset->addTag( 'controller.service_arguments' );
+            $definition
+                ->setPublic( true )
+                ->setAutowired( true );
 
-            $asset->setPublic( true );
-            $asset->setAutowired( true );
-            $asset->addMethodCall( 'setDependencies', $setDependencies );
+            $this->report->item( $className );
 
-            $this->container->setDefinition( $className, $asset );
+            $this->container->setDefinition( $className, $definition );
         }
-        // dd();
 
-        $registeredServices->output();
         return $this;
     }
 
@@ -102,9 +94,9 @@ final class RegisterAssetsPass extends CompilerPass
     /**
      * @param Definition $definition
      *
-     * @return null|AssetAttribute<AssetAttribute>
+     * @return null|Asset<AbstractAsset>
      */
-    private function definitionViewComponentAttribute( Definition $definition ) : ?AssetAttribute
+    private function definitionViewComponentAttribute( Definition $definition ) : ?Asset
     {
         $className = $definition->getClass() ?: 'invalid';
 
@@ -115,16 +107,16 @@ final class RegisterAssetsPass extends CompilerPass
             return null;
         }
 
-        if ( ! \is_subclass_of( $className, AssetAttribute::class ) ) {
+        if ( ! \is_subclass_of( $className, AbstractAsset::class ) ) {
             $this->console->error(
-                "{$className} must extend the '".AssetAttribute::class."' class.",
+                "{$className} must extend the '".AbstractAsset::class."' class.",
             );
             return null;
         }
 
         $attribute = Reflect::getAttribute(
             $className,
-            AssetAttribute::class,
+            Asset::class,
         );
 
         return $attribute?->configure( $className );
