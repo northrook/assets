@@ -19,13 +19,13 @@ interface AssetInterface
      * relative: /assets/type/fileName.ext
      * ```
      *
-     * @param bool $relative [false]
+     * @param bool $absolute [false]
      * @param bool $version  Append `?v=`{@see getVersion}
      *
      * @return string URL relative to `dir.public`
      */
     public function getUrl(
-        bool $relative = false,
+        bool $absolute = false,
         bool $version = false,
     ) : string;
 

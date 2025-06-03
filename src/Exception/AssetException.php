@@ -2,6 +2,4 @@
 
 namespace Core\Exception;
 
-use LogicException;
-
-final class AssetException extends LogicException {}
+final class AssetException extends RuntimeException {}

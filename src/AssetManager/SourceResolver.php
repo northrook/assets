@@ -88,7 +88,7 @@ final class SourceResolver implements DataInterface, Stringable
 
     public function type() : Type
     {
-        return $this->type ??= Type::from( $this->remoteUrl ?? $this->localPath );
+        return $this->type ??= Type::resolve( $this->remoteUrl ?? $this->localPath );
     }
 
     public function prefersRemote( bool $set = null ) : bool

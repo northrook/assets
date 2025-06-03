@@ -2,30 +2,27 @@
 
 namespace Core\Asset;
 
-use Core\AssetManager\AbstractAsset;
-use Core\Compiler\Hook\OnBuild;
-use Core\View\Element;
+use Core\Asset;
 use Stringable;
 
 /**
- * @phpstan-require-extends AbstractAsset
+ * @internal
+ *
+ * @phpstan-require-extends Asset
  * @phpstan-require-implements Stringable
  */
 trait Printable
 {
-    public readonly Element $element;
-
-    abstract protected function render() : void;
-
-    #[OnBuild]
-    final public function getElement() : Element
+    /**
+     * @return string
+     * @final
+     */
+    final public function getHtml() : string
     {
-        return $this->element ??= new Element();
+        return $this->render()->__toString();
     }
 
-    final public function __toString() : string
-    {
-        $this->render();
-        return $this->element->render();
-    }
+    abstract protected function render() : self;
+
+    abstract public function __toString() : string;
 }

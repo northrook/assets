@@ -2,7 +2,18 @@
 
 namespace Core\Asset;
 
+use Core\Compiler\Hook\OnBuild;
+
 /**
- * @phpstan-require-extends \Core\AssetManager\AbstractAsset
+ * @phpstan-require-extends \Core\Asset
  */
-interface Minifiable {}
+interface Minifiable
+{
+    /**
+     * @param ?bool $set
+     *
+     * @return bool
+     */
+    #[OnBuild]
+    public function mergeImports( ?bool $set = null ) : bool;
+}

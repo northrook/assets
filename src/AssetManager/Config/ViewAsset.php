@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Core\AssetManager\Config;
 
 use Attribute;
-use Core\AssetManager\AbstractAsset;
+use Core\{Asset, AssetManager};
 use Core\Asset\Type;
-use Core\AssetManager;
 use Core\Exception\{AssetException, TypeException};
-use Core\Symfony\DependencyInjection\Autodiscover;
+use Core\Compiler\Autodiscover;
 use InvalidArgumentException;
 use LogicException;
 use Override;
@@ -19,15 +18,15 @@ use const Support\AUTO;
 
 /**
  * Reference this asset using:
- * - {@see Asset::$name}
- * - {@see Asset::$className}
- * - {@see Asset::$publicPath}
+ * - {@see ViewAsset::$name}
+ * - {@see ViewAsset::$className}
+ * - {@see ViewAsset::$publicPath}
  *
- * @extends Autodiscover<AbstractAsset> registered as a {@see service}.
+ * @extends Autodiscover<Asset> registered as a {@see service}.
  * @used-by \Core\AssetManager
  */
 #[Attribute( Attribute::TARGET_CLASS )]
-final class Asset extends Autodiscover implements Stringable
+final class ViewAsset extends Autodiscover implements Stringable
 {
     /** @var non-empty-string */
     public readonly string $name;
@@ -127,7 +126,7 @@ final class Asset extends Autodiscover implements Stringable
                 );
             }
 
-            $path = "/{$this->baseDirectory}/{$this->type->name()}/{$this->name}.{$extension}";
+            $path = "/{$this->baseDirectory}/{$this->type->value}/{$this->name}.{$extension}";
 
             $this->publicPath = $this->resolvePublicPath( $path );
         }
@@ -165,7 +164,7 @@ final class Asset extends Autodiscover implements Stringable
             }
 
             $source = normalize_path( $value, true );
-            $type ??= Type::from( $source );
+            $type ??= Type::resolve( $source );
 
             $sources[$key] = $source;
         }

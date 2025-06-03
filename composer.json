@@ -20,7 +20,6 @@
     "php": ">=8.3",
     "ext-curl": "*",
     "northrook/core": "dev-main",
-    "northrook/core-symfony": "dev-main",
     "northrook/pathfinder": "dev-main",
     "northrook/minify": "dev-main",
     "northrook/cache": "dev-main",
@@ -33,7 +32,7 @@
   "require-dev": {
     "symfony/framework-bundle": "@stable",
     "northrook/dev": "dev-main",
-    "northrook/core-framework": "dev-main"
+    "northrook/settings": "dev-main"
   },
   "scripts": {
     "phpstan": "vendor/bin/phpstan analyse src"

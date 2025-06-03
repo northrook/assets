@@ -4,7 +4,7 @@
 
 namespace Core\Asset;
 
-use Core\AssetManager\AbstractAsset;
+use Core\Asset;
 use Core\Exception\AssetException;
 use InvalidArgumentException;
 use Stringable;
@@ -12,23 +12,33 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\VarExporter\VarExporter;
 use LogicException;
 use Throwable;
-use function Support\{datetime, normalize_newline, normalize_path};
+use function Support\{arr_has_keys,
+    datetime,
+    is_stringable,
+    is_url,
+    normalize_newline,
+    normalize_path,
+    normalize_url,
+    slug
+};
 
 /**
  * @internal
  *
- * @property-read class-string<AbstractAsset> $class
- * @property-read ?string                     $id
- * @property-read Type                        $type
- * @property-read Origin                      $origin
- * @property-read string                      $url
- * @property-read string                      $source
- * @property-read array<array-key, string>    $sources
- * @property-read string                      $version
+ * @property-read class-string<Asset>      $class
+ * @property-read ?string                  $id
+ * @property-read Type                     $type
+ * @property-read Origin                   $origin
+ * @property-read string                   $fileName
+ * @property-read string                   $baseName
+ * @property-read string                   $url
+ * @property-read string                   $source
+ * @property-read array<array-key, string> $sources
+ * @property-read string                   $version
  */
 final class Meta
 {
-    public const string               EXTENSION = 'meta';
+    public const string EXTENSION = 'meta';
 
     protected bool $hasChanges = false;
 
@@ -39,85 +49,41 @@ final class Meta
      */
     private function __construct(
         protected array          $meta = [
-            'id'      => null,
-            'type'    => null,
-            'class'   => null,
-            'origin'  => null,
-            'sources' => [],
-            'public'  => [],
+            'id'       => null,
+            'type'     => null,
+            'class'    => null,
+            'origin'   => null,
+            'fileName' => null,
+            'source'   => null, // A single 'real' source file - can be relative to ~/assets/type
+            'sources'  => [],
+            'public'   => [],
         ],
         private readonly ?string $hash = null,
         protected ?string        $filePath = null,
     ) {}
+
+    public function __get( string $name ) : mixed
+    {
+        return $this->meta[$name] ??= match ( $name ) {
+            'class'    => $this->meta['class'],
+            'id'       => $this->id(),
+            'type'     => $this->type(),
+            'origin'   => $this->origin(),
+            'url'      => $this->url(),
+            'fileName' => $this->fileName(),
+            'baseName' => $this->baseName(),
+            'version'  => $this->version(),
+            default    => throw new InvalidArgumentException(
+                $this::class." has no meta '{$name}'.",
+            ),
+        };
+    }
 
     public function __destruct()
     {
         if ( $this->filePath && $this->hasChanges ) {
             $this->commit();
         }
-    }
-
-    /**
-     * @param class-string<AbstractAsset> $class
-     */
-    public static function new(
-        string $class,
-    ) : self {
-        $meta = new self();
-
-        return $meta->assetClass( $class );
-    }
-
-    /**
-     * @param class-string<AbstractAsset> $class
-     * @param string|string[]             $source
-     */
-    public static function create(
-        string       $class,
-        array|string $source,
-    ) : self {
-        $meta = new self();
-
-        $meta
-            ->assetClass( $class )
-            ->addSource( $source )
-            ->validateSources();
-
-        return $meta->set( id : $meta->id() );
-    }
-
-    public function __get( string $name ) : mixed
-    {
-        return $this->meta[$name] ??= match ( $name ) {
-            'class'   => $this->meta['class'],
-            'id'      => $this->id(),
-            'type'    => $this->type(),
-            'origin'  => $this->origin(),
-            'url'     => $this->url(),
-            'version' => $this->version(),
-            default   => throw new InvalidArgumentException(
-                $this::class." has no meta '{$name}'.",
-            ),
-        };
-    }
-
-    /**
-     * @param class-string<AbstractAsset>     $asset
-     * @param array<array-key, string>|string $source
-     *
-     * @return string
-     */
-    final public static function getAssetId(
-        string       $asset,
-        array|string $source,
-    ) : string {
-        $data = [$asset];
-
-        foreach ( (array) $source as $key => $path ) {
-            $data[] = $key.$path;
-        }
-
-        return \hash( 'xxh64', \implode( '', $data ) );
     }
 
     public static function load( string $filePath ) : self
@@ -131,18 +97,88 @@ final class Meta
     }
 
     /**
-     * @param string                         $filePath
-     * @param class-string<AbstractAsset>    $class
-     * @param array<array-key,string>|string $source
-     * @param ?string                        $id
+     * @param class-string<Asset> $class
+     */
+    public static function new(
+        string $class,
+    ) : self {
+        return ( new self() )->assetClass( $class );
+    }
+
+    /**
+     * @param class-string<Asset> $class
+     * @param string|Stringable   $source
+     * @param mixed[]             $arguments
+     *
+     * @return Meta
+     */
+    public static function provide(
+        string            $class,
+        string|Stringable $source,
+        mixed          ...$arguments,
+    ) : self {
+        $meta = new self();
+
+        $meta
+            ->assetClass( $class )
+            ->setSource( $source )
+            ->add( ...$arguments );
+
+        dump( $meta->id(), $meta );
+
+        return $meta
+            ->set( id : $meta->id() );
+    }
+
+    /**
+     * @param class-string<Asset> $class
+     * @param string|Stringable   $source
+     * @param array<string,mixed> $arguments
+     *
+     * @return Meta
+     */
+    public static function create(
+        string            $class,
+        string|Stringable $source,
+        array             $arguments = [],
+    ) : self {
+        $meta = new self();
+
+        $meta
+            ->assetClass( $class )
+            ->setSource( $source )
+            ->add( ...$arguments );
+
+        return $meta
+            ->set( id : $meta->id() );
+    }
+
+    /**
+     * @param class-string<Asset> $asset
+     * @param string|Stringable   $source
+     *
+     * @return string
+     */
+    final public static function getAssetId(
+        string            $asset,
+        string|Stringable $source,
+    ) : string {
+        return \hash( 'xxh64', $asset.$source );
+    }
+
+    /**
+     * @param string              $filePath
+     * @param class-string<Asset> $class
+     * @param string|Stringable   $source
+     * @param ?string             $id
      *
      * @return self
      */
     public static function retrieve(
-        string       $filePath,
-        string       $class,
-        array|string $source,
-        ?string      $id = null,
+        string            $filePath,
+        string            $class,
+        Stringable|string $source,
+        ?string           $id = null,
     ) : self {
         $fileName = \strrchr( \strtr( $filePath, '\\', '/' ), '/' )
                 ?: throw new InvalidArgumentException( "Invalid filePath '{$filePath}'" );
@@ -172,6 +208,13 @@ final class Meta
         }
 
         return $meta;
+    }
+
+    public function resolve( string $key, callable $onMissing ) : mixed
+    {
+        $key = $this->validateKey( $key );
+
+        return $this->meta[$key] ?? $onMissing();
     }
 
     /**
@@ -223,55 +266,15 @@ final class Meta
 
         if ( $key === 'sources' ) {
             \assert(
-                \is_string( $value ) || \is_array( $value ) || $value instanceof Stringable,
-                $this::class.'[source] only accpets array or string, '.\gettype( $value )."' given.",
+                is_stringable( $value ),
+                $this::class.'[sources] only accpets stringable values, '.\gettype( $value )."' given.",
             );
-            /** @var array<array-key,string|Stringable>|string|Stringable $value */
             return $this->addSource( $value );
         }
 
         $this->meta[$key] = $value;
         $this->hasChanges = true;
 
-        return $this;
-    }
-
-    /**
-     * @param array<array-key,string|Stringable>|string|Stringable $source
-     *
-     * @return $this
-     */
-    public function addSource( Stringable|string|array $source ) : self
-    {
-        if ( ! isset( $this->meta['sources'] ) ) {
-            $this->meta['sources'] = [];
-        }
-
-        \assert( \is_array( $this->meta['sources'] ) );
-
-        $sources = \is_array( $source ) ? $source : [$source];
-
-        $origin = null;
-
-        foreach ( $sources as $key => $path ) {
-            \assert( \is_string( $path ) || $path instanceof Stringable );
-
-            $path = normalize_path( $path );
-
-            $from = Origin::fromPath( $path );
-
-            $origin ??= $from;
-
-            if ( $origin !== $from ) {
-                $origin = Origin::MIXED;
-            }
-
-            $this->meta['sources'][$key] = $path;
-        }
-
-        $this->meta['origin'] = $origin;
-
-        $this->hasChanges = true;
         return $this;
     }
 
@@ -396,13 +399,13 @@ final class Meta
     {
         return $this->meta['id'] ??= $this::getAssetId(
             $this->class,
-            $this->sources,
+            $this->source,
         );
     }
 
     protected function type() : Type
     {
-        return $this->meta['type'] ??= Type::from( $this->url() );
+        return $this->meta['type'] ??= Type::resolve( $this->url() );
     }
 
     protected function origin() : Origin
@@ -421,7 +424,7 @@ final class Meta
     protected function path() : string
     {
         // ~{dir.public}/assets/{type}/{basename}.{ext}
-        return __METHOD__;
+        return $this->meta['public'];
     }
 
     protected function url() : string
@@ -429,39 +432,91 @@ final class Meta
         return __METHOD__;
     }
 
+    protected function fileName() : string
+    {
+        return (string) \pathinfo( $this->meta['source'], PATHINFO_FILENAME );
+    }
+
+    protected function baseName() : string
+    {
+        return (string) \pathinfo( $this->meta['source'], PATHINFO_BASENAME );
+    }
+
     protected function version() : string
     {
         return (string) \time();
     }
 
+    public function addSource( string|Stringable $source, ?string $key = null ) : self
+    {
+        if ( ! $path = (string) $source ) {
+            throw new AssetException( 'Empty source provided: '.\var_export( $source, true ) );
+        }
+
+        $key ??= slug( $source );
+
+        $origin = Origin::fromPath( $path );
+        $type   = Type::resolve( $path );
+
+        dump( \get_defined_vars() );
+
+        return $this;
+    }
+
+    public function setSource( Stringable|string $source ) : self
+    {
+        \assert( arr_has_keys( $this->meta, 'source', 'origin', 'type' ) );
+
+        if ( ! $path = (string) $source ) {
+            throw new AssetException( 'Empty source provided: '.\var_export( $source, true ) );
+        }
+
+        $this->meta['origin'] = Origin::fromPath( $path );
+        $this->meta['type']   = Type::resolve( $path );
+        $this->meta['source'] = is_url( $path )
+                ? normalize_url( $path )
+                : normalize_path( $path );
+
+        return $this;
+    }
+
     /**
-     * @param bool $nullable
-     * @param bool $throwOnEmpty
-     * @param bool $throwOnMultiple
+     * @param string|Stringable ...$source
      *
-     * @return ($nullable is true ? null|string : string)
+     * @return $this
      */
-    public function source(
-        bool $nullable = false,
-        bool $throwOnEmpty = true,
-        bool $throwOnMultiple = true,
-    ) : ?string {
-        \assert( $this->validateSources( $throwOnEmpty ) );
-
-        if ( $throwOnMultiple && \count( $this->meta['sources'] ) > 1 ) {
-            throw new InvalidArgumentException(
-                $this::class." for {$this->type->name} has multiple sources. Single source expected.",
-            );
+    public function __addSource( Stringable|string ...$source ) : self
+    {
+        if ( ! isset( $this->meta['sources'] ) ) {
+            $this->meta['sources'] = [];
         }
 
-        if ( $nullable ) {
-            return \end( $this->sources ) ?: null;
+        \assert( \is_array( $this->meta['sources'] ) );
+
+        $sources = \is_array( $source ) ? $source : [$source];
+
+        $origin = null;
+
+        foreach ( $sources as $key => $path ) {
+            \assert( \is_string( $path ) || $path instanceof Stringable );
+
+            $path = normalize_path( $path );
+
+            $from = Origin::fromPath( $path );
+
+            $origin ??= $from;
+
+            if ( $origin !== $from ) {
+                $origin = Origin::MIXED;
+            }
+
+            $this->meta['sources'][$key] = $path;
         }
 
-        return \end( $this->sources )
-                ?: throw new AssetException(
-                    $this::class." for {$this->type->name} has no source.",
-                );
+        $this->meta['origin'] = $origin;
+
+        $this->hasChanges = true;
+        return $this;
     }
 
     /**
@@ -471,13 +526,13 @@ final class Meta
      */
     public function sources( bool $throwOnEmpty = true ) : array
     {
-        \assert( $this->validateSources( $throwOnEmpty ) );
+        // \assert( $this->validateSources( $throwOnEmpty ) );
         return $this->meta['sources'];
     }
 
     private function assetClass( string $class ) : self
     {
-        \assert( \class_exists( $class ) && \is_subclass_of( $class, AbstractAsset::class ) );
+        \assert( \class_exists( $class ) && \is_subclass_of( $class, Asset::class ) );
         $this->meta['class'] = $class;
         return $this;
     }
@@ -522,12 +577,14 @@ final class Meta
         \assert( \is_array( $this->meta['sources'] ) );
 
         foreach ( $this->meta['sources'] as $source ) {
-            $type = Type::from( $source );
+            $type = Type::resolve( $source );
 
             $this->meta['type'] ??= $type;
 
             if ( $this->type !== $type ) {
-                throw new AssetException();
+                throw new AssetException(
+                    "The asset source '{$source}' is not of type '{$this->type}'.",
+                );
             }
         }
 

@@ -6,7 +6,11 @@ namespace Core\Asset;
 
 use InvalidArgumentException, ReflectionEnum, ReflectionException;
 
-enum Type
+/**
+ * - {@see Type::$name}  `UPPERCASE`
+ * - {@see Type::$value} `lowercase`
+ */
+enum Type : string
 {
     private const array MAP = [
         // Core Asset Types
@@ -94,61 +98,61 @@ enum Type
     ];
 
     // Undefined Type
-    case NULL;
+    case NULL = 'null';
 
     // Core Asset Types
-    case STYLE;
-    case SCRIPT;
-    case IMAGE;
-    case VIDEO;
-    case AUDIO;
-    case FONT;
+    case STYLE  = 'style';
+    case SCRIPT = 'script';
+    case IMAGE  = 'image';
+    case VIDEO  = 'video';
+    case AUDIO  = 'audio';
+    case FONT   = 'font';
 
     // Document Asset Types
-    case DOCUMENT;
-    case DATA;
-    case TEXT;
-    case SPREADSHEET;
-    case PRESENTATION;
+    case DOCUMENT     = 'document';
+    case DATA         = 'data';
+    case TEXT         = 'text';
+    case SPREADSHEET  = 'spreadsheet';
+    case PRESENTATION = 'presentation';
 
     // Archive Asset Types
-    case ARCHIVE;
+    case ARCHIVE = 'archive';
 
     // Executable Asset Types
-    case EXECUTABLE;
-    case PACKAGE;
+    case EXECUTABLE = 'executable';
+    case PACKAGE    = 'package';
 
     // Code Asset Types
-    case SOURCE;
-    case CONFIG;
-    case TEMPLATE;
+    case SOURCE   = 'source';
+    case CONFIG   = 'config';
+    case TEMPLATE = 'template';
 
     // Design and Media Asset Types
-    case MODEL;
-    case DESIGN;
-    case VECTOR;
-    case LAYOUT;
-    case TEXTURE;
+    case MODEL   = 'model';
+    case DESIGN  = 'design';
+    case VECTOR  = 'vector';
+    case LAYOUT  = 'layout';
+    case TEXTURE = 'texture';
 
     // Miscellaneous Asset Types
-    case LOG;
-    case BACKUP;
-    case CERTIFICATE;
-    case CHECKSUM;
-    case ICON;
+    case LOG         = 'log';
+    case BACKUP      = 'backup';
+    case CERTIFICATE = 'certificate';
+    case CHECKSUM    = 'checksum';
+    case ICON        = 'icon';
 
     /**
      * Returns a `dot.notated` key.
      *
      * @param ?string $append
      *
-     * @return lowercase-string
+     * @return non-empty-lowercase-string
      */
     final public function key( ?string $append = null ) : string
     {
         static $className = null;
         $className ??= \strtolower( \strtr( $this::class, '\\', '.' ) );
-        $key = [$className, $this->name];
+        $key = [$className, $this->value];
         if ( $append ) {
             \assert(
                 \ctype_alnum( \str_replace( ['.', '_'], '', $append ) ),
@@ -166,9 +170,7 @@ enum Type
      */
     final public function name( bool $pluralize = false ) : string
     {
-        $name = \strtolower( $this->name );
-
-        return $pluralize ? \rtrim( $name, 's' ).'s' : $name;
+        return $pluralize ? \rtrim( $this->value, 's' ).'s' : $this->value;
     }
 
     final public function extension( ?string $string = null ) : string
@@ -228,7 +230,7 @@ enum Type
      *
      * @return ($nullable is true ? null|static : static)
      */
-    final public static function from( string|Type $string, bool $nullable = false ) : ?Type
+    final public static function resolve( string|Type $string, bool $nullable = false ) : ?Type
     {
         if ( $string instanceof self ) {
             return $string;
